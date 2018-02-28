@@ -4,13 +4,13 @@ module mod_usr
   double precision, allocatable :: pbc(:),rbc(:), pubc(:),rubc(:)
   double precision :: usr_grav
   double precision :: heatunit,gzone,B0,theta,SRadius,kx,ly,bQ0,dya,BB1,BB2,BB3
-  double precision, allocatable :: pa(:),ra(:),ya(:),Ha(:)
+  double precision, allocatable :: dpa(:),pa(:),ra(:),ya(:),Ha(:)
   integer, parameter :: jmax=8000
 
   double precision, allocatable :: p_profile(:), rho_profile(:), Te_profile(:) 
-  integer, parameter :: kmax=8000
   double precision :: s0,s1,Bv,B_y,y_r, dyk
-  logical :: driver, tanh_profile, c7_profile, driver_kuz, driver_random 
+  logical :: driver, tanh_profile, c7_profile, driver_kuz, driver_random, testing
+  logical :: derivative, integrate
   double precision :: randphase(10), randA(10), randP(10)
   integer :: nxmodes
 
@@ -49,7 +49,8 @@ contains
   character(len=*), intent(in) :: files(:)
   integer                      :: n
 
-  namelist /my_switches/ driver, driver_kuz, driver_random, tanh_profile, c7_profile
+  namelist /my_switches/ driver, driver_kuz, driver_random, tanh_profile, & 
+                         c7_profile, derivative, integrate
   do n = 1, size(files)
    open(unitpar, file=trim(files(n)), status="old")
        read(unitpar, my_switches, end=111)
@@ -70,7 +71,6 @@ contains
     usr_grav=-2.74d4*unit_length/unit_velocity**2 ! solar gravity
     bQ0=1.d-4/heatunit ! background heating power density
     gzone=0.2d0 ! thickness of a ghostzone below the bottom boundary
-    dya=(2.d0*gzone+xprobmax2-xprobmin2)/dble(jmax) ! cells size of high-resolution 1D solar atmosphere
     B0=Busr/unit_magneticfield ! magnetic field strength at the bottom
     theta=60.d0*dpi/180.d0 ! the angle to the plane xy, 90-theta is the angle to the polarity inversion line of the arcade
     kx=dpi/((xprobmax1-xprobmin1)/2.0d0)
@@ -163,9 +163,10 @@ contains
     kappa=8.d-7*unit_temperature**3.5d0/unit_length/unit_density/unit_velocity**3
    
    !=> set up of tanh profile
-   if(tanh_profile) then    
     !=> creates temperture profile
-    allocate(ya(jmax),Ta(jmax),gg(jmax),pa(jmax),ra(jmax))
+    allocate(ya(jmax),Ta(jmax),gg(jmax),dpa(jmax),pa(jmax),ra(jmax),Ha(jmax))
+  if(tanh_profile) then   
+        dya=(2.d0*gzone+xprobmax2-xprobmin2)/dble(jmax) ! cells size of high-resolution 1D solar atmosphere
     do j=1,jmax
        ya(j)=(dble(j)-0.5d0)*dya-gzone
       !<=remove for steeper T profile 
@@ -176,10 +177,36 @@ contains
        endif
        gg(j)=usr_grav*(SRadius/(SRadius+ya(j)))**2
     enddo
-    !!=> solution of hydrostatic equation
-    nb=int(gzone/dya)
     ra(1)=rpho
     pa(1)=rpho*Tpho
+   endif
+
+ !=> set up of c7 profile
+   if(c7_profile) then   
+   !=> Data imported here is in SI units
+   open (unit = 11, file ="atmos_data/c7/1dinterp/c7_rho.dat", status='old')
+   open (unit = 12, file ="atmos_data/c7/1dinterp/c7_Te.dat", status='old')
+   open (unit = 13, file ="atmos_data/c7/1dinterp/c7_y.dat", status='old')
+
+  do i=1,jmax  
+   read(11,*) ra(i) !kg m-3
+   read(12,*) Ta(i) !K
+   read(13,*) ya(i) !0-10Mm
+   ra(i) = ra(i)*1d-3/unit_density !SI to cgs to dimensionless 
+   Ta(i) = Ta(i)/unit_temperature
+   gg(i)=usr_grav*(SRadius/(SRadius+ya(i)))**2
+  end do 
+   close(11)
+   close(12)
+   close(13)
+   
+   dya = ya(2) ! Cells size for C7 data
+   pa(1)=ra(1)*Ta(1)
+   endif
+ 
+   !!=> solution of hydrostatic equation
+
+    if(integrate) then
     invT=gg(1)/Ta(1) !<1/H(y)
     invT=0.d0
     !=>scale height for HS equation
@@ -188,9 +215,23 @@ contains
        pa(j)=pa(1)*dexp(invT*dya)
        ra(j)=pa(j)/Ta(j)
     end do
+    endif
+
+   if(derivative)then
+    pa(1)=ra(1)*Ta(1)
+    do j=2,jmax
+      pa(j)=(pa(j-1)+dya*(gg(j)+gg(j-1))*ra(j-1)/4.d0)/(one-dya*(gg(j)+gg(j-1))/Ta(j)/4.d0)
+      ra(j)=pa(j)/Ta(j)
+    end do
+!    do j=2,jmax-1
+!      dpa(j)=pa(j+1)-2.0d0*pa(j)+pa(j-1)
+!      ra(j)=-dpa(j)/gg(j)
+!    end do
+   endif
+
     !! initialized rho and p in the fixed bottom boundary
     na=floor(gzone/dya+0.5d0)
-    res=gzone-(dble(na)-0.5d0)*dya !<= Residual
+    res=gzone-(dble(na)-0.5d0)*dya
     rhob=ra(na)+res/dya*(ra(na+1)-ra(na))
     pb=pa(na)+res/dya*(pa(na+1)-pa(na))
     allocate(rbc(nghostcells))
@@ -206,69 +247,9 @@ contains
      print*,'minra',minval(ra)
      print*,'rhob',rhob
      print*,'pb',pb
+     print*,'dy',dya     
     endif
-   endif
 
- !=> set up of c7 profile
-   if(c7_profile) then   
-    allocate(ya(kmax),Ta(kmax),gg(kmax),pa(kmax),ra(kmax),Ha(kmax))
-   !=> Data imported here is in SI units
-!   open (unit = 11, file ="atmos_data/c7/fort/rho.dat", status='old')
-!   open (unit = 12, file ="atmos_data/c7/fort/Temp.dat", status='old')
-!   open (unit = 13, file ="atmos_data/c7/fort/y.dat", status='old')
-
-   open (unit = 11, file ="atmos_data/c7/1dinterp/c7_rho.dat", status='old')
-   open (unit = 12, file ="atmos_data/c7/1dinterp/c7_Te.dat", status='old')
-   open (unit = 13, file ="atmos_data/c7/1dinterp/c7_y.dat", status='old')
-
-
-
-  do i=1,kmax  
-   read(11,*) ra(i) !kg m-3
-   read(12,*) Ta(i) !K
-   read(13,*) ya(i) !0-10Mm
-   ra(i) = ra(i)*0.001d0/unit_density !SI to cgs to dimensionless 
-   Ta(i) = Ta(i)/unit_temperature
-   gg(i)=usr_grav*(SRadius/(SRadius+ya(i)))**2
-  end do 
-   close(11)
-   close(12)
-   close(13)
-
-    dyk = ya(2) ! Cells size for C7 data
-    pa(1)=ra(1)*Ta(1)
-    invT=gg(1)/Ta(1) !<1/H(z)
-    invT=0.d0
-    !=>used scale height for HS equation
-    do i=2,kmax
-       invT=invT+(gg(i)/Ta(i)+gg(i-1)/Ta(i-1))*0.5d0
-       Ha(i)=-1.0d0/((gg(i)/Ta(i)+gg(i-1)/Ta(i-1))*0.5d0)
-       pa(i)=pa(1)*dexp(invT*dyk)
-       ra(i)=pa(i)/Ta(i)
-       if(mype==0)then
-!       write(*,*) ya(i),Ha(i),Ha(i)/((xprobmax2-xprobmin2)/domain_nx2)
-       endif
-    end do
-    !! initialized rho and p in the fixed bottom boundary
-    na=floor(gzone/dyk+0.5d0)
-    res=gzone-(dble(na)-0.5d0)*dyk !<= Residual
-    rhob=ra(na)+res/dyk*(ra(na+1)-ra(na))
-    pb=pa(na)+res/dyk*(pa(na+1)-pa(na))
-    allocate(rbc(nghostcells))
-    allocate(pbc(nghostcells))
-    do ibc=nghostcells,1,-1
-      na=floor((gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0))/dyk+0.5d0)
-      res=gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0)-(dble(na)-0.5d0)*dyk
-      rbc(ibc)=ra(na)+res/dyk*(ra(na+1)-ra(na))
-      pbc(ibc)=pa(na)+res/dyk*(pa(na+1)-pa(na))
-    end do
-
-    if (mype==0) then
-     print*,'minra',minval(ra)
-     print*,'rhob',rhob
-     print*,'pb',pb
-    endif
- endif
   end subroutine inithdstatic
 
   subroutine initonegrid_usr(ixI^L,ixO^L,w,x)
@@ -281,10 +262,12 @@ contains
     double precision, intent(inout) :: w(ixI^S,1:nw)
 
     double precision :: res,step1
-    integer :: ix^D,na,i
+    integer :: ix^D,na,i,idims
     integer :: nb_pts
     logical, save :: first=.true.
     double precision :: width, A, y0,x0
+
+    double precision:: gradp(ixG^T),dp(ixG^T), ggrid(ixI^S), p(ixG^T)
 
     if(first)then
       if(mype==0) then
@@ -308,27 +291,44 @@ contains
     endif
       
     if(.NOT.firstprocess)then
-    if(tanh_profile) then
     {do ix^DB=ixOmin^DB,ixOmax^DB\}
         na=floor((x(ix^D,2)-xprobmin2+gzone)/dya+0.5d0)
         res=x(ix^D,2)-xprobmin2+gzone-(dble(na)-0.5d0)*dya
         w(ix^D,rho_)=ra(na)+(one-cos(dpi*res/dya))/two*(ra(na+1)-ra(na))
         w(ix^D,p_)=pa(na)+(one-cos(dpi*res/dya))/two*(pa(na+1)-pa(na))
     {end do\}
-    endif
 
-    if(c7_profile) then
+!     p(ixI^S)=w(ixI^S,p_)
+!     gradp(ixO^S)=zero
+!    do idims=1,ndim
+!       select case(typegrad)
+!       case("central")
+!         call gradient(p,ixI^L,ixO^L,idims,dp)
+!       case("limited")
+!         call gradientS(p,ixI^L,ixO^L,idims,dp)
+!       end select
+!       gradp(ixO^S)=gradp(ixO^S)+dp(ixO^S)**2.0d0
+!     enddo
+!     gradp(ixO^S)=dsqrt(gradp(ixO^S))
+!     if(mype==0) then
+!     write(*,*) gradp(ixO^S) 
+!     endif
+!     call getggrav(ggrid,ixI^L,ixO^L,x)
+!     w(ixO^S,rho_) = gradp(ixO^S)/ggrid(ixO^S) 
+
+
+    if(testing) then
 !    dyk = ya(2) ! Cells size for C7 data
 !    nb_pts = domain_nx2+2*nghostcells 
 !=> interpolation to obtain rho & p of HSE
     do ix2=ixOmin2,ixOmax2
     do ix1=ixOmin1,ixOmax1
-        na=floor((x(ix^D,2)-xprobmin2+gzone)/dyk+0.5d0)
-        res=x(ix^D,2)-xprobmin2+gzone-(dble(na)-0.5d0)*dyk
-        w(ix^D,rho_)=ra(na)+(one-cos(dpi*res/dyk))/two*(ra(na+1)-ra(na))
-        w(ix^D,p_)=pa(na)+(one-cos(dpi*res/dyk))/two*(pa(na+1)-pa(na))
+        na=floor((x(ix^D,2)-xprobmin2+gzone)/dya+0.5d0)
+        res=x(ix^D,2)-xprobmin2+gzone-(dble(na)-0.5d0)*dya
+        w(ix^D,rho_)=ra(na)+(one-cos(dpi*res/dya))/two*(ra(na+1)-ra(na))
+        w(ix^D,p_)=pa(na)+(one-cos(dpi*res/dya))/two*(pa(na+1)-pa(na))
     enddo
-!        write(*,*)na,floor(x(ix^D,2)+0.5d0),pa(na),ra(na),dyk,floor(x(ix^D,2)-xprobmin2+gzone+0.5d0) 
+!        write(*,*)na,floor(x(ix^D,2)+0.5d0),pa(na),ra(na),dya,floor(x(ix^D,2)-xprobmin2+gzone+0.5d0) 
     enddo
 
     endif
@@ -516,7 +516,7 @@ contains
     integer :: idirmin,idir,ix^D
 
     double precision:: gradrho(ixG^T),rho(ixG^T),drho(ixG^T)
-    double precision:: gradp(ixG^T),dp(ixG^T), ggrid(ixI^S)
+    double precision:: gradp(ixG^T),dp(ixG^T), ggrid(ixI^S), p(ixG^T)
     double precision:: kk,kk0,grhomax,kk1
     integer         :: idims
     logical, save   :: firstrun=.true.
@@ -525,9 +525,9 @@ contains
     call phys_get_pthermal(w,x,ixI^L,ixO^L,pth)
     w(ixO^S,nw+1)=unit_temperature*pth(ixO^S)/w(ixO^S,rho_)
 
-
      rho(ixI^S)=w(ixI^S,rho_)
      gradrho(ixO^S)=zero
+
      do idims=1,ndim
        select case(typegrad)
        case("central")
@@ -536,9 +536,10 @@ contains
          call gradientS(rho,ixI^L,ixO^L,idims,drho)
        end select
        gradrho(ixO^S)=gradrho(ixO^S)+drho(ixO^S)**2.0d0
-     enddo
+     enddo     
 
      gradrho(ixO^S)=dsqrt(gradrho(ixO^S))
+
      kk=5.0d0
      kk0=0.01d0
      kk1=1.0d0
@@ -547,34 +548,29 @@ contains
   ! putting the schlierplot of density in nwauxio=1
      w(ixO^S,nw+2)=dexp(-kk*(gradrho(ixO^S)-kk0*grhomax)/(kk1*grhomax-kk0*grhomax))
 
+     w(ixO^S,nw+3)=gradrho(ixO^S)
+
    
-    w(ixO^S,nw+3)=unit_velocity*dsqrt(hd_gamma*pth(ixO^S)/w(ixO^S,rho_))
+    w(ixO^S,nw+4)=unit_velocity*dsqrt(hd_gamma*pth(ixO^S)/w(ixO^S,rho_))
 
-
+     p(ixI^S)=pth(ixI^S)
      gradp(ixO^S)=zero
      do idims=1,ndim
        select case(typegrad)
        case("central")
-         call gradient(pth(ixO^S),ixI^L,ixO^L,idims,dp)
+         call gradient(p,ixI^L,ixO^L,idims,dp)
        case("limited")
-         call gradientS(pth(ixO^S),ixI^L,ixO^L,idims,dp)
+         call gradientS(p,ixI^L,ixO^L,idims,dp)
        end select
-       gradp(ixO^S)=pth(ixO^S)+dp(ixO^S)**2.0d0
+       gradp(ixO^S)=gradp(ixO^S)+dp(ixO^S)**2.0d0
      enddo
      gradp(ixO^S)=dsqrt(gradp(ixO^S))
 
    
    call getggrav(ggrid,ixI^L,ixO^L,x)
-   w(ixO^S,nw+4)=gradp(ixO^S)-w(ixI^S,rho_)*ggrid(ixO^S)
- 
-     if(firstrun)then
-     if(mype==7)then
-     do ix2 =ixOmin2,ixOmax2
-     write(*,*) x(1,ix2,2),gradp(1,ix2),ggrid(1,ix2)
-     enddo  
-     endif
-      firstrun=.false.
-     endif
+!gradp is fine
+   w(ixO^S,nw+5)=-gradp(ixO^S)+w(ixO^S,rho_)*ggrid(ixO^S)
+
   end subroutine specialvar_output
 
   subroutine specialvarnames_output(varnames)
@@ -582,7 +578,7 @@ contains
     use mod_global_parameters
     character(len=*) :: varnames
 
-    varnames='Te schrho cs fb'
+    varnames='Te schrho delrho cs fb'
 
   end subroutine specialvarnames_output
 

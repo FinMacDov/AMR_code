@@ -23,8 +23,6 @@ contains
     use mod_global_parameters
     use mod_usr_methods
 
-    call set_coordinate_system("Cartesian")
-
     hd_gamma=1.66666667d0
 
     unit_length        = 1.d8 !cm = 1 Mm
@@ -41,6 +39,7 @@ contains
     usr_add_aux_names   => specialvarnames_output
     usr_var_for_errest  => Te_for_errest
 
+    call set_coordinate_system("Cartesian")
     call hd_activate()
     call params_read(par_files)
   end subroutine usr_init
@@ -191,8 +190,6 @@ contains
    open (unit = 12, file ="atmos_data/c7/1dinterp/c7_Te.dat", status='old')
    open (unit = 13, file ="atmos_data/c7/1dinterp/c7_y.dat", status='old')
 
-
-
   do i=1,kmax  
    read(11,*) ra(i) !kg m-3
    read(12,*) Ta(i) !K
@@ -302,9 +299,9 @@ contains
     endif
     endif
  
-    if(.NOT.firstprocess)then
+!    if(.NOT.firstprocess)then
      call phys_to_conserved(ixImin1,ixImax1,ixOmin1,ixOmax1,w,x)
-    endif
+!    endif
   end subroutine initonegrid_usr
 
   subroutine Te_for_errest(ixImin1,ixImax1,ixOmin1,ixOmax1,iflag,w,x,var)
@@ -339,7 +336,7 @@ contains
 
 
     select case(iB)
-    case(3)
+    case(1)
       !! fixed zero velocity
       do idir=1,ndir
         w(ixOmin1:ixOmax1,mom(idir)) =-w(ixOmax1+nghostcells:ixOmax1+1:-1,&
@@ -354,8 +351,8 @@ contains
         endif
       enddo      
       call phys_to_conserved(ixImin1,ixImax1,ixOmin1,ixOmax1,w,x)
-    case(4)
-      ixIntmin1=ixOmin1-1;ixIntmax1=ixOmin1-1;
+    case(2)
+      ixIntmin1=ixOmin1-1;ixIntmax1=ixOmax1;
       call hd_get_pthermal(w,x,ixImin1,ixImax1,ixIntmin1,ixIntmax1,pth)
       ixIntmin1=ixOmin1-1;ixIntmax1=ixOmax1;
       call getggrav(ggrid,ixImin1,ixImax1,ixIntmin1,ixIntmax1,x)
@@ -415,7 +412,6 @@ contains
   ! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
   ! corresponding normalization values (default value 1)
     use mod_global_parameters
-    use mod_radiative_cooling
 
     integer, intent(in)                :: ixImin1,ixImax1,ixOmin1,ixOmax1
     double precision, intent(in)       :: x(ixImin1:ixImax1,1:ndim)

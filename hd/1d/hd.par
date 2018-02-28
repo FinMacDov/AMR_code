@@ -9,10 +9,9 @@
 
  &filelist
         base_filename='/home/fionnlagh/work/dat/hd/1d_test/c7_HD_'
-        saveprim=.T.
-        autoconvert=.T.
+        saveprim=.true.
+        autoconvert=.true.
         convert_type='vtuBCCmpi'
-!        slice_type='csv'
         nwauxio=3
         firstprocess=.F.  
  /
@@ -21,13 +20,7 @@
         itsave(1,1)=0
         itsave(1,2)=0
         dtsave_log=1.0d0
-        dtsave_dat=0.5d0!=> adding slice output
-!        dtsave(3)=16.0d0 !<= slice output saved
-!        nslices=1        !<= number of slices
-!        slicedir(1)=1    !<= data is taken perp to dim select i.e
-                         !<= in this case x is chosen and thus we
-                         !<= take data from y axis.
-!        slicecoord(1)=0.0!<= pt of origin of slice. 
+        dtsave_dat=0.5d0
  /
 
  &stoplist
@@ -46,8 +39,8 @@
 
  &boundlist
         nghostcells=2
-        typeboundary_min1 = 3*'cont'
-        typeboundary_max1 = 3*'cont'
+        typeboundary_min1 = 3*'special'
+        typeboundary_max1 = 3*'special'!'special'
 /
 
  &meshlist

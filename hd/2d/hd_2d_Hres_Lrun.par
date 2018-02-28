@@ -8,7 +8,7 @@
 !==============================================================
 
  &filelist
-        base_filename='/home/fionnlagh/work/dat/hd/2d_test/test1_'
+        base_filename='/home/fionnlagh/work/dat/hd/2d_test/tah_hd_2d_Hres_Lrun_se'
         saveprim=.T.
         autoconvert=.T.
         convert_type='vtuBCCmpi'
@@ -20,9 +20,9 @@
  &savelist
         itsave(1,1)=0
         itsave(1,2)=0
-        dtsave_log=1.0d0
-        dtsave_dat=0.001d0!=> adding slice output
-        dtsave(3)=1.0d0 !<= slice output saved
+        dtsave_log=20.0d0
+        dtsave_dat=10.0d0 !=> adding slice output
+        dtsave(3)=10.0d0 !<= slice output saved
         nslices=1        !<= number of slices
         slicedir(1)=1    !<= data is taken perp to dim select i.e
                          !<= in this case x is chosen and thus we
@@ -32,16 +32,16 @@
 
  &stoplist
         dtmin=1.D-14
-        time_max=1.0d0
+        time_max=1670
 /
 
  &methodlist
         time_integrator='threestep' 
         flux_scheme=20*'hllc'
         limiter= 20*'cada3'
-        small_values_method='error'
-        small_pressure=1.0d-14
-        small_density=1.0d-14
+!        small_values_method='error'
+!        small_pressure=1.0d-14
+!        small_density=1.0d-14
 /
 
  &boundlist
@@ -74,8 +74,8 @@
 
 
 &my_switches
-    tanh_profile= .F.
-    c7_profile = .T.
+    tanh_profile= .T.
+    c7_profile = .F.
     driver= .F.
     driver_random = .F.
     driver_kuz = .F.
