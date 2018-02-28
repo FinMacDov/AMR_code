@@ -8,7 +8,7 @@
 !==============================================================
 
  &filelist
-        base_filename='/home/fionnlagh/work/dat/mhd/2d/bg/c7_test_'
+        base_filename='/home/fionnlagh/work/dat/mhd/2d/bg/c7_test_dim_'
         saveprim=.T.
         autoconvert=.T.
         convert_type='vtuBCCmpi'
@@ -70,10 +70,10 @@
         xprobmax1=0.5d0
         xprobmin2=0.0d0
         xprobmax2=9.0d0
-        stretched_grid=.F.
-        stretched_symm_dim(1)=.F.
-        qstretch_baselevel(1)=1.05
-        nstretchedblocks_baselevel=4
+!        stretched_grid=.F.
+!        stretched_symm_dim(1)=.F.
+!        qstretch_baselevel(1)=1.05
+!        nstretchedblocks_baselevel=4
  /
 
  &paramlist
@@ -100,5 +100,7 @@
     driver_kuz = .F.
     derivative = .F.
     integrate = .T.
+    si_units = .T.
+    cgs_units = .F.
 /
 

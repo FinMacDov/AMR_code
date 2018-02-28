@@ -10,7 +10,8 @@ module mod_usr
   double precision, allocatable :: p_profile(:), rho_profile(:), Te_profile(:) 
   integer, parameter :: kmax=8000
   double precision :: s0,s1,Bv,B_y,y_r, dyk
-  logical :: driver, tanh_profile, c7_profile, driver_kuz, driver_random 
+  logical :: driver, tanh_profile, c7_profile, driver_kuz, driver_random, integrate, derivative 
+  logical :: cgs_units, si_units 
   double precision :: randphase(10), randA(10), randP(10)
   integer :: nxmodes
 
@@ -25,11 +26,19 @@ contains
     mhd_gamma=1.66666667d0
     mhd_eta=zero ! This gives idea MHD
 
+    if(cgs_units)then
     unit_length        = 1.d8                                         ! cm = 1 Mm
     unit_temperature   = 1.d6                                         ! K
     unit_numberdensity = 1.d9                                         ! cm^-3
+    endif
 
-!    unit_pressure = unit_temperature*unit_density
+    if(si_units)then
+    unit_length        = 1.d6                                         ! m = 1 Mm
+    unit_temperature   = 1.d6                                         ! K
+    unit_density = 1.d-7                                              ! kg/m^-3
+    unit_pressure = unit_density*unit_temperature  
+    endif
+
 
     usr_set_parameters  => initglobaldata_usr
     usr_init_one_grid   => initonegrid_usr
@@ -52,7 +61,8 @@ contains
   character(len=*), intent(in) :: files(:)
   integer                      :: n
 
-  namelist /my_switches/ driver, driver_kuz, driver_random, tanh_profile, c7_profile
+  namelist /my_switches/ driver,driver_kuz,driver_random,tanh_profile,&
+                         c7_profile,integrate,derivative,si_units,cgs_units 
   do n = 1, size(files)
    open(unitpar, file=trim(files(n)), status="old")
        read(unitpar, my_switches, end=111)
@@ -185,7 +195,7 @@ contains
     ra(1)=rpho
     pa(1)=rpho*Tpho
     invT=gg(1)/Ta(1) !<1/H(y)
-    invT=0.d0
+!    invT=0.d0
     !=>scale height for HS equation
     do j=2,jmax
        invT=invT+(gg(j)/Ta(j)+gg(j-1)/Ta(j-1))*0.5d0
@@ -225,8 +235,6 @@ contains
    open (unit = 12, file ="atmos_data/c7/1dinterp/c7_Te.dat", status='old')
    open (unit = 13, file ="atmos_data/c7/1dinterp/c7_y.dat", status='old')
 
-
-
   do i=1,kmax  
    read(11,*) ra(i) !kg m-3
    read(12,*) Ta(i) !K
@@ -238,16 +246,17 @@ contains
    close(11)
    close(12)
    close(13)
-
+    
+    if(integrate) then
     dyk = ya(2) ! Cells size for C7 data
-    pa(1)=ra(1)*Ta(1)
-    invT=gg(1)/Ta(1) !<1/H(z)
-    invT=0.d0
+    pa(kmax)=ra(kmax)*Ta(kmax)
+    invT=gg(kmax)/Ta(kmax) !<1/H(z)
+!    invT=0.d0
     !=>used scale height for HS equation
-    do i=2,kmax
-       invT=invT+(gg(i)/Ta(i)+gg(i-1)/Ta(i-1))*0.5d0
-       Ha(i)=-1.0d0/((gg(i)/Ta(i)+gg(i-1)/Ta(i-1))*0.5d0)
-       pa(i)=pa(1)*dexp(invT*dyk)
+    do i=kmax-1,1,-1
+       invT=invT+(gg(i)/Ta(i)+gg(i+1)/Ta(i+1))*0.5d0
+       Ha(i)=-1.0d0/((gg(i)/Ta(i)+gg(i+1)/Ta(i+1))*0.5d0)
+       pa(i)=pa(kmax)*dexp(-invT*dyk)
        ra(i)=pa(i)/Ta(i)
        if(mype==0)then
 !       write(*,*) ya(i),Ha(i),Ha(i)/((xprobmax2-xprobmin2)/domain_nx2)
@@ -273,6 +282,31 @@ contains
      print*,'pb',pb
     endif
  endif
+   endif
+
+   if(derivative)then
+    dyk = ya(2) ! Cells size for C7 data
+        !! solution of hydrostatic equation 
+    pa(1)=ra(1)*Ta(1)
+    do j=2,jmax
+        pa(j)=(pa(j-1)+dyk*(gg(j)+gg(j-1))*ra(j-1)/4.d0)/(one-dyk*(gg(j)+gg(j-1))/Ta(j)/4.d0)
+      ra(j)=pa(j)/Ta(j)
+    end do
+    !! initialized rho and p in the fixed bottom boundary
+    na=floor(gzone/dyk+0.5d0)
+    res=gzone-(dble(na)-0.5d0)*dyk
+    rhob=ra(na)+res/dyk*(ra(na+1)-ra(na))
+    pb=pa(na)+res/dyk*(pa(na+1)-pa(na))
+    allocate(rbc(nghostcells))
+    allocate(pbc(nghostcells))
+    do ibc=nghostcells,1,-1
+      na=floor((gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0))/dyk+0.5d0)
+      res=gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0)-(dble(na)-0.5d0)*dyk
+      rbc(ibc)=ra(na)+res/dyk*(ra(na+1)-ra(na))
+      pbc(ibc)=pa(na)+res/dyk*(pa(na+1)-pa(na))
+    end do
+
+   endif
   end subroutine inithdstatic
 
   subroutine initonegrid_usr(ixI^L,ixO^L,w,x)
@@ -527,7 +561,7 @@ contains
     case(4)
       ixInt^L=ixO^L;
       ixIntmin2=ixOmin2-1;ixIntmax2=ixOmin2-1;
-      call phys_get_pthermal(w,x,ixI^L,ixInt^L,pth)
+      call mhd_get_pthermal(w,x,ixI^L,ixInt^L,pth)
       ixIntmin2=ixOmin2-1;ixIntmax2=ixOmax2;
       call getggrav(ggrid,ixI^L,ixInt^L,x)
       !> fill pth, rho ghost layers according to gravity stratification
@@ -636,7 +670,6 @@ contains
   ! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
   ! corresponding normalization values (default value 1)
     use mod_global_parameters
-    use mod_radiative_cooling
 
     integer, intent(in)                :: ixI^L,ixO^L
     double precision, intent(in)       :: x(ixI^S,1:ndim)
@@ -649,11 +682,13 @@ contains
     integer :: idirmin,idir,ix^D
 
     double precision:: gradrho(ixG^T),rho(ixG^T),drho(ixG^T)
+    double precision:: gradp(ixG^T),dp(ixG^T), ggrid(ixI^S), p(ixG^T)
     double precision:: kk,kk0,grhomax,kk1
-    integer                            :: idims
+    integer         :: idims
+    logical, save   :: firstrun=.true.
 
     ! output temperature
-    call phys_get_pthermal(w,x,ixI^L,ixO^L,pth)
+    call mhd_get_pthermal(w,x,ixI^L,ixO^L,pth)
     w(ixO^S,nw+1)=unit_temperature*pth(ixO^S)/w(ixO^S,rho_)
 
     do idir=1,ndir
@@ -705,6 +740,24 @@ contains
    
     w(ixO^S,nw+9)=unit_velocity*dsqrt(mhd_gamma*pth(ixO^S)/w(ixO^S,rho_))
 
+     p(ixI^S)=pth(ixI^S)
+     gradp(ixO^S)=zero
+     do idims=1,ndim
+       select case(typegrad)
+       case("central")
+         call gradient(p,ixI^L,ixO^L,idims,dp)
+       case("limited")
+         call gradientS(p,ixI^L,ixO^L,idims,dp)
+       end select
+       gradp(ixO^S)=gradp(ixO^S)+dp(ixO^S)**2.0d0
+     enddo
+     gradp(ixO^S)=dsqrt(gradp(ixO^S))
+
+   
+   call getggrav(ggrid,ixI^L,ixO^L,x)
+!gradp is fine
+   w(ixO^S,nw+10)=-gradp(ixO^S)+w(ixO^S,rho_)*ggrid(ixO^S)
+
   end subroutine specialvar_output
 
   subroutine specialvarnames_output(varnames)
@@ -712,7 +765,7 @@ contains
     use mod_global_parameters
     character(len=*) :: varnames
 
-    varnames='Te Alfv divB beta schrho j1 j2 j3 cs'
+    varnames='Te Alfv divB beta schrho j1 j2 j3 cs fb'
 
   end subroutine specialvarnames_output
 
