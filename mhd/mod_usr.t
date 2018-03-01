@@ -33,9 +33,10 @@ contains
     endif
 
     if(si_units)then
+    SI_unit = .True.
     unit_length        = 1.d6                                         ! m = 1 Mm
     unit_temperature   = 1.d6                                         ! K
-    unit_density = 1.d-7                                              ! kg/m^-3
+    unit_numberdensity = 1.d-7/mp_SI                                  ! m^-3
     unit_pressure = unit_density*unit_temperature  
     endif
 
@@ -106,7 +107,7 @@ contains
     !<= s1 fixes the value of |B| = 8G @ (0,y_r)     
     
     !=> To allow output to be in physical uints
-    length_convert_factor = 1.0d0!unit_length
+    length_convert_factor = unit_length
     time_convert_factor = unit_time
     w_convert_factor(1) = unit_density
     w_convert_factor(5) = unit_pressure

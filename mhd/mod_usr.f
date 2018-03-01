@@ -14,6 +14,7 @@ module mod_usr
   double precision :: s0,s1,Bv,B_y,y_r, dyk
   logical :: driver, tanh_profile, c7_profile, driver_kuz, driver_random,&
       integrate, derivative 
+  logical :: cgs_units, si_units 
   double precision :: randphase(10), randA(10), randP(10)
   integer :: nxmodes
 
@@ -28,11 +29,20 @@ contains
     mhd_gamma=1.66666667d0
     mhd_eta=zero ! This gives idea MHD
 
-    unit_length        = 1 !1.d8                                         ! cm = 1 Mm
-    unit_temperature   = 1!1.d6                                         ! K
-    unit_numberdensity = 1 !1.d9                                         ! cm-3,cm-3
+    if(cgs_units)then
+    unit_length        = 1.d8 !cm = 1 Mm
+    unit_temperature   = 1.d6                                         ! K
+    unit_numberdensity = 1.d9 !cm-3,cm-3
+    endif
 
-!    unit_pressure = unit_temperature*unit_density
+    if(si_units)then
+    SI_unit = .True.
+    unit_length        = 1.d6 !m = 1 Mm
+    unit_temperature   = 1.d6                                         ! K
+    unit_numberdensity = 1.d-7/mp_SI !m-3,m-3
+    unit_pressure = unit_density*unit_temperature  
+    endif
+
 
     usr_set_parameters  => initglobaldata_usr
     usr_init_one_grid   => initonegrid_usr
@@ -55,8 +65,8 @@ contains
   character(len=*), intent(in) :: files(:)
   integer                      :: n
 
-  namelist /my_switches/ driver, driver_kuz, driver_random, tanh_profile,&
-      c7_profile, integrate,derivative 
+  namelist /my_switches/ driver,driver_kuz,driver_random,tanh_profile,&
+     c7_profile,integrate,derivative,si_units,cgs_units 
   do n = 1, size(files)
    open(unitpar, file=trim(files(n)), status="old")
        read(unitpar, my_switches, end=111)
@@ -72,7 +82,7 @@ contains
     real:: randphaseP1(1:10), randA1(1:10), randP1(1:10)
  
    ! unit_pressure = unit_temperature*unit_density
-    heatunit=1 !unit_pressure/unit_time          ! 3.697693390805347E-003 erg*cm-3/s,erg*cm-3/s
+    heatunit=unit_pressure/unit_time !3.697693390805347E-003 erg*cm-3/s,erg*cm-3/s
 
     usr_grav=-2.74d4*unit_length/unit_velocity**2 ! solar gravity
     bQ0=1.d-4/heatunit ! background heating power density
