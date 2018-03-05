@@ -14,7 +14,6 @@ module mod_usr
   double precision :: s0,s1,Bv,B_y,y_r, dyk
   logical :: driver, tanh_profile, c7_profile, driver_kuz, driver_random,&
       integrate, derivative 
-  logical :: cgs_units, si_units 
   double precision :: randphase(10), randA(10), randP(10)
   integer :: nxmodes
 
@@ -29,20 +28,11 @@ contains
     mhd_gamma=1.66666667d0
     mhd_eta=zero ! This gives idea MHD
 
-    if(cgs_units)then
     unit_length        = 1.d8 !cm = 1 Mm
     unit_temperature   = 1.d6                                         ! K
     unit_numberdensity = 1.d9 !cm-3,cm-3
-    endif
 
-    if(si_units)then
-    SI_unit = .True.
-    unit_length        = 1.d6 !m = 1 Mm
-    unit_temperature   = 1.d6                                         ! K
-    unit_numberdensity = 1.d-7/mp_SI !m-3,m-3
-    unit_pressure = unit_density*unit_temperature  
-    endif
-
+!    unit_pressure = unit_temperature*unit_density
 
     usr_set_parameters  => initglobaldata_usr
     usr_init_one_grid   => initonegrid_usr
@@ -65,8 +55,8 @@ contains
   character(len=*), intent(in) :: files(:)
   integer                      :: n
 
-  namelist /my_switches/ driver,driver_kuz,driver_random,tanh_profile,&
-     c7_profile,integrate,derivative,si_units,cgs_units 
+  namelist /my_switches/ driver, driver_kuz, driver_random, tanh_profile,&
+      c7_profile, integrate,derivative 
   do n = 1, size(files)
    open(unitpar, file=trim(files(n)), status="old")
        read(unitpar, my_switches, end=111)
@@ -119,7 +109,12 @@ contains
       w_convert_factor(iv) = unit_velocity
       w_convert_factor(iv+4) = unit_magneticfield
     enddo 
-
+    
+    if(mype==0)then
+    write(*,*) w_convert_factor
+    endif
+  
+     
     !=> hydrostatic vertical stratification of density, temperature, pressure
     call inithdstatic
     
@@ -201,7 +196,7 @@ contains
     ra(1)=rpho
     pa(1)=rpho*Tpho
     invT=gg(1)/Ta(1) !<1/H(y)
-!    invT=0.d0
+    invT=0.d0
     !=>scale height for HS equation
     do j=2,jmax
        invT=invT+(gg(j)/Ta(j)+gg(j-1)/Ta(j-1))*0.5d0
@@ -548,32 +543,6 @@ contains
         endif
       enddo
 
-!----------------------------
-!! May end up deleting
-!----------------------------
-!      !add stratification to bc
-!      if(c7_profile)then
-!      ixInt^L=ixO^L;
-!      ixIntmin2=ixOmin2+1;ixIntmax2=ixOmin2+1;
-!      call mhd_get_pthermal(w,x,ixI^L,ixInt^L,pth)
-!      ixIntmin2=ixOmin2;ixIntmax2=ixOmax2+1;
-!      call getggrav(ggrid,ixI^L,ixInt^L,x)
-!      !> fill pth, rho ghost layers according to gravity stratification
-!      invT(ixOmin2+1^%2ixO^S)=w(ixOmin2+1^%2ixO^S,rho_)/pth(ixOmin2+1^%2ixO^S)
-!      tmp=0.d0
-!      do ix2=ixOmin2,ixOmax2
-!        tmp(ixOmin2+1^%2ixO^S)=tmp(ixOmin2+1^%2ixO^S)+0.5d0*&
-!            (ggrid(ix2^%2ixO^S)+ggrid(ix2+1^%2ixO^S))*invT(ixOmin2+1^%2ixO^S)
-!        w(ix2^%2ixO^S,p_)=pth(ixOmin2+1^%2ixO^S)*dexp(tmp(ixOmin2+1^%2ixO^S)*dxlevel(2))
-!        w(ix2^%2ixO^S,rho_)=w(ix2^%2ixO^S,p_)*invT(ixOmin2+1^%2ixO^S)
-!        if(mype==0)then
-!        write(*,*)x(1,ix2,2),tmp(1,ix2),w(1,ix2,rho_),w(1,ix2,p_)
-!        endif
-!      enddo
-!      endif
-!----------------------------
-!! May end up deleting
-!----------------------------
       !=> Driver
       if(driver) then 
       jet_w = (xprobmax1-xprobmin1)/domain_nx1 !<= 1 cell radius 
@@ -615,7 +584,7 @@ contains
     case(4)
       ixIntmin1=ixOmin1;ixIntmin2=ixOmin2;ixIntmax1=ixOmax1;ixIntmax2=ixOmax2;
       ixIntmin2=ixOmin2-1;ixIntmax2=ixOmin2-1;
-      call mhd_get_pthermal(w,x,ixImin1,ixImin2,ixImax1,ixImax2,ixIntmin1,&
+      call phys_get_pthermal(w,x,ixImin1,ixImin2,ixImax1,ixImax2,ixIntmin1,&
          ixIntmin2,ixIntmax1,ixIntmax2,pth)
       ixIntmin2=ixOmin2-1;ixIntmax2=ixOmax2;
       call getggrav(ggrid,ixImin1,ixImin2,ixImax1,ixImax2,ixIntmin1,ixIntmin2,&
@@ -756,6 +725,7 @@ contains
   ! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
   ! corresponding normalization values (default value 1)
     use mod_global_parameters
+    use mod_radiative_cooling
 
     integer, intent(in)                :: ixImin1,ixImin2,ixImax1,ixImax2,&
        ixOmin1,ixOmin2,ixOmax1,ixOmax2
@@ -782,9 +752,8 @@ contains
     double precision:: kk,kk0,grhomax,kk1
     integer         :: idims
     logical, save   :: firstrun=.true.
-
     ! output temperature
-    call mhd_get_pthermal(w,x,ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,ixOmin2,&
+    call phys_get_pthermal(w,x,ixImin1,ixImin2,ixImax1,ixImax2,ixOmin1,ixOmin2,&
        ixOmax1,ixOmax2,pth)
     w(ixOmin1:ixOmax1,ixOmin2:ixOmax2,nw+&
        1)=unit_temperature*pth(ixOmin1:ixOmax1,&

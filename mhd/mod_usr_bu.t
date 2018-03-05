@@ -11,6 +11,7 @@ module mod_usr
   integer, parameter :: kmax=8000
   double precision :: s0,s1,Bv,B_y,y_r, dyk
   logical :: driver, tanh_profile, c7_profile, driver_kuz, driver_random, integrate, derivative 
+  logical :: units_cgs, units_si 
   double precision :: randphase(10), randA(10), randP(10)
   integer :: nxmodes
 
@@ -24,12 +25,6 @@ contains
 
     mhd_gamma=1.66666667d0
     mhd_eta=zero ! This gives idea MHD
-
-    unit_length        = 1.d8                                         ! cm = 1 Mm
-    unit_temperature   = 1.d6                                         ! K
-    unit_numberdensity = 1.d9                                         ! cm^-3
-
-!    unit_pressure = unit_temperature*unit_density
 
     usr_set_parameters  => initglobaldata_usr
     usr_init_one_grid   => initonegrid_usr
@@ -52,7 +47,8 @@ contains
   character(len=*), intent(in) :: files(:)
   integer                      :: n
 
-  namelist /my_switches/ driver, driver_kuz, driver_random, tanh_profile, c7_profile, integrate,derivative 
+  namelist /my_switches/ driver,driver_kuz,driver_random,tanh_profile,&
+                         c7_profile,integrate,derivative,units_si,units_cgs 
   do n = 1, size(files)
    open(unitpar, file=trim(files(n)), status="old")
        read(unitpar, my_switches, end=111)
@@ -66,7 +62,42 @@ contains
     integer,dimension(:),allocatable:: seed
     integer::  seed_size,ix
     real:: randphaseP1(1:10), randA1(1:10), randP1(1:10)
- 
+
+    if(units_cgs)then
+     unit_length        = 1.d8        ! cm = 1 Mm
+     unit_temperature   = 1.d6        ! K
+     unit_density       = 1.d9*mp_cgs ! kg cm^-3
+     if(unit_velocity==0) then
+       unit_pressure=unit_density*Rgas_cgs*unit_temperature
+       unit_velocity=sqrt(unit_pressure/unit_density)
+       unit_magneticfield=sqrt(miu0_cgs*unit_pressure)
+       unit_time=unit_length/unit_velocity
+     else
+       unit_pressure=unit_density*Rgas_cgs*unit_temperature
+       unit_temperature=Rgas_cgs*unit_pressure/unit_density
+       unit_magneticfield=sqrt(miu0_cgs*unit_pressure)
+       unit_time=unit_length/unit_velocity
+     end if
+    endif
+
+    if(units_si)then
+     SI_unit = .True.
+     unit_length        = 1.d6       ! m = 1 Mm
+     unit_temperature   = 1.d6       ! K
+     unit_density       = 1.d-7      ! kg m^-3
+     if(unit_velocity==0) then
+      unit_pressure=unit_density*Rgas_si*unit_temperature
+      unit_velocity=sqrt(unit_pressure/unit_density)
+      unit_magneticfield=sqrt(miu0_SI*unit_pressure)
+      unit_time=unit_length/unit_velocity
+     else
+      unit_pressure=unit_density*Rgas_si*unit_temperature
+      unit_temperature=Rgas_SI*unit_pressure/unit_density
+      unit_magneticfield=sqrt(miu0_SI*unit_pressure)
+      unit_time=unit_length/unit_velocity
+     end if
+    endif
+
    ! unit_pressure = unit_temperature*unit_density
     heatunit=unit_pressure/unit_time          ! 3.697693390805347E-003 erg*cm^-3/s
 
@@ -96,7 +127,7 @@ contains
     !<= s1 fixes the value of |B| = 8G @ (0,y_r)     
     
     !=> To allow output to be in physical uints
-    length_convert_factor = 1.0d0!unit_length
+    length_convert_factor = unit_length
     time_convert_factor = unit_time
     w_convert_factor(1) = unit_density
     w_convert_factor(5) = unit_pressure
@@ -105,12 +136,7 @@ contains
       w_convert_factor(iv) = unit_velocity
       w_convert_factor(iv+4) = unit_magneticfield
     enddo 
-    
-    if(mype==0)then
-    write(*,*) w_convert_factor
-    endif
-  
-     
+
     !=> hydrostatic vertical stratification of density, temperature, pressure
     call inithdstatic
     
@@ -162,6 +188,7 @@ contains
     double precision:: rpho,Ttop,Tpho,wtra,res,rhob,pb,htra,Ttr,Fc,invT,kappa
     integer :: step2,nb_pts 
     double precision:: step1
+
     rpho=1.151d15/unit_numberdensity ! number density at the bottom
     Tpho=8.d3/unit_temperature ! temperature of chromosphere
     Ttop=1.8d6/unit_temperature ! estimated temperature in the top
@@ -169,8 +196,8 @@ contains
     wtra=0.01d0!0.02d0 ! width of initial transition region
     Ttr=1.6d5/unit_temperature ! lowest temperature of upper profile
     Fc=2.d5/heatunit/unit_length ! constant thermal conduction flux
-    kappa=8.d-7*unit_temperature**3.5d0/unit_length/unit_density/unit_velocity**3
-   
+    kappa=8.d-7*unit_temperature**3.5d0/unit_length/unit_density/unit_velocity**3  
+
    !=> set up of tanh profile
    if(tanh_profile) then    
     !=> creates temperture profile
@@ -190,7 +217,7 @@ contains
     ra(1)=rpho
     pa(1)=rpho*Tpho
     invT=gg(1)/Ta(1) !<1/H(y)
-    invT=0.d0
+!    invT=0.d0
     !=>scale height for HS equation
     do j=2,jmax
        invT=invT+(gg(j)/Ta(j)+gg(j-1)/Ta(j-1))*0.5d0
@@ -221,10 +248,6 @@ contains
  !=> set up of c7 profile
    if(c7_profile) then   
     allocate(ya(kmax),Ta(kmax),gg(kmax),pa(kmax),ra(kmax),Ha(kmax))
-   !=> Data imported here is in SI units
-!   open (unit = 11, file ="atmos_data/c7/fort/rho.dat", status='old')
-!   open (unit = 12, file ="atmos_data/c7/fort/Temp.dat", status='old')
-!   open (unit = 13, file ="atmos_data/c7/fort/y.dat", status='old')
 
    open (unit = 11, file ="atmos_data/c7/1dinterp/c7_rho.dat", status='old')
    open (unit = 12, file ="atmos_data/c7/1dinterp/c7_Te.dat", status='old')
@@ -234,7 +257,10 @@ contains
    read(11,*) ra(i) !kg m-3
    read(12,*) Ta(i) !K
    read(13,*) ya(i) !0-10Mm
-   ra(i) = ra(i)*0.001d0/unit_density !SI to cgs to dimensionless 
+    if(units_cgs)then
+     ra(i) = ra(i)*0.001d0/unit_density !SI to cgs to dimensionless 
+    endif
+   ra(i) = ra(i)/unit_density !SI to cgs to dimensionless 
    Ta(i) = Ta(i)/unit_temperature
    gg(i)=usr_grav*(SRadius/(SRadius+ya(i)))**2
   end do 
@@ -326,7 +352,7 @@ contains
         write(*,*)'T =', unit_time, 's'
         write(*,*)'L =', unit_length, 'cm'
         write(*,*)'V =', unit_velocity, 'cm s-1'
-        write(*,*)'rho =', unit_numberdensity, 'g cm-3'
+        write(*,*)'rhon =', unit_numberdensity, 'cm-3'
         write(*,*)'rho =', unit_density, 'g cm-3'
         write(*,*)'B =', unit_magneticfield, 'G'
         write(*,*)'T =', unit_temperature, 'K'
@@ -447,7 +473,6 @@ contains
     integer :: nb_pts
     double precision :: rand_driv(10)
 
-
     select case(iB)
     case(3)
       !! fixed zero velocity
@@ -492,6 +517,32 @@ contains
         endif
       enddo
 
+!----------------------------
+!! May end up deleting
+!----------------------------
+!      !add stratification to bc
+!      if(c7_profile)then
+!      ixInt^L=ixO^L;
+!      ixIntmin2=ixOmin2+1;ixIntmax2=ixOmin2+1;
+!      call mhd_get_pthermal(w,x,ixI^L,ixInt^L,pth)
+!      ixIntmin2=ixOmin2;ixIntmax2=ixOmax2+1;
+!      call getggrav(ggrid,ixI^L,ixInt^L,x)
+!      !> fill pth, rho ghost layers according to gravity stratification
+!      invT(ixOmin2+1^%2ixO^S)=w(ixOmin2+1^%2ixO^S,rho_)/pth(ixOmin2+1^%2ixO^S)
+!      tmp=0.d0
+!      do ix2=ixOmin2,ixOmax2
+!        tmp(ixOmin2+1^%2ixO^S)=tmp(ixOmin2+1^%2ixO^S)+0.5d0*&
+!            (ggrid(ix2^%2ixO^S)+ggrid(ix2+1^%2ixO^S))*invT(ixOmin2+1^%2ixO^S)
+!        w(ix2^%2ixO^S,p_)=pth(ixOmin2+1^%2ixO^S)*dexp(tmp(ixOmin2+1^%2ixO^S)*dxlevel(2))
+!        w(ix2^%2ixO^S,rho_)=w(ix2^%2ixO^S,p_)*invT(ixOmin2+1^%2ixO^S)
+!        if(mype==0)then
+!        write(*,*)x(1,ix2,2),tmp(1,ix2),w(1,ix2,rho_),w(1,ix2,p_)
+!        endif
+!      enddo
+!      endif
+!----------------------------
+!! May end up deleting
+!----------------------------
       !=> Driver
       if(driver) then 
       jet_w = (xprobmax1-xprobmin1)/domain_nx1 !<= 1 cell radius 
@@ -530,7 +581,7 @@ contains
     case(4)
       ixInt^L=ixO^L;
       ixIntmin2=ixOmin2-1;ixIntmax2=ixOmin2-1;
-      call phys_get_pthermal(w,x,ixI^L,ixInt^L,pth)
+      call mhd_get_pthermal(w,x,ixI^L,ixInt^L,pth)
       ixIntmin2=ixOmin2-1;ixIntmax2=ixOmax2;
       call getggrav(ggrid,ixI^L,ixInt^L,x)
       !> fill pth, rho ghost layers according to gravity stratification
@@ -639,7 +690,6 @@ contains
   ! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
   ! corresponding normalization values (default value 1)
     use mod_global_parameters
-    use mod_radiative_cooling
 
     integer, intent(in)                :: ixI^L,ixO^L
     double precision, intent(in)       :: x(ixI^S,1:ndim)
@@ -656,8 +706,9 @@ contains
     double precision:: kk,kk0,grhomax,kk1
     integer         :: idims
     logical, save   :: firstrun=.true.
+
     ! output temperature
-    call phys_get_pthermal(w,x,ixI^L,ixO^L,pth)
+    call mhd_get_pthermal(w,x,ixI^L,ixO^L,pth)
     w(ixO^S,nw+1)=unit_temperature*pth(ixO^S)/w(ixO^S,rho_)
 
     do idir=1,ndir

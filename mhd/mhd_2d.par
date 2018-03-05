@@ -8,7 +8,7 @@
 !==============================================================
 
  &filelist
-        base_filename='/home/fionnlagh/work/dat/mhd/2d/bg/c7_test_dim_'
+        base_filename='/home/fionnlagh/work/dat/mhd/2d/bg/dim_'
         saveprim=.T.
         autoconvert=.T.
         convert_type='vtuBCCmpi'
@@ -61,19 +61,15 @@
         w_refine_weight(6)=0.2d0
         w_refine_weight(7)=0.2d0
         w_refine_weight(8)=0.2d0
-        block_nx1=2
+        block_nx1=4
         block_nx2=10
-        domain_nx1=2
+        domain_nx1=4
         domain_nx2=400
         iprob=0
         xprobmin1=-0.5d0
         xprobmax1=0.5d0
         xprobmin2=0.0d0
         xprobmax2=9.0d0
-!        stretched_grid=.F.
-!        stretched_symm_dim(1)=.F.
-!        qstretch_baselevel(1)=1.05
-!        nstretchedblocks_baselevel=4
  /
 
  &paramlist
@@ -100,7 +96,7 @@
     driver_kuz = .F.
     derivative = .F.
     integrate = .T.
-    si_units = .T.
-    cgs_units = .F.
+!    units_si = .T.
+!    units_cgs = .F.
 /
 
