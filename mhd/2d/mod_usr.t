@@ -7,9 +7,7 @@ module mod_usr
   double precision, allocatable :: pa(:),ra(:),ya(:),Ha(:)
   integer, parameter :: jmax=8000
 
-  double precision, allocatable :: p_profile(:), rho_profile(:), Te_profile(:) 
-  integer, parameter :: kmax=8000
-  double precision :: s0,s1,Bv,B_y,y_r, dyk
+  double precision :: s0,s1,Bv,B_y,y_r
   logical :: driver, tanh_profile, c7_profile, driver_kuz, driver_random, integrate, derivative 
   double precision :: randphase(10), randA(10), randP(10)
   integer :: nxmodes
@@ -25,9 +23,9 @@ contains
     mhd_gamma=1.66666667d0
     mhd_eta=zero ! This gives idea MHD
 
-    unit_length        = 1.d8                                         ! cm = 1 Mm
-    unit_temperature   = 1.d6                                         ! K
-    unit_numberdensity = 1.d9                                         ! cm^-3
+    unit_length        = 1.d8  ! cm = 1 Mm
+    unit_temperature   = 1.d6  ! K
+    unit_numberdensity = 1.d9  ! cm^-3
 
 !    unit_pressure = unit_temperature*unit_density
 
@@ -152,10 +150,9 @@ contains
   !! initialize the table in a vertical line through the global domain
     use mod_global_parameters
 
-    integer :: j,na,nb,ibc, i, k
+    integer :: j,na,ibc, i, k
     double precision, allocatable :: Ta(:),gg(:)
     double precision:: rpho,Ttop,Tpho,wtra,res,rhob,pb,htra,Ttr,Fc,invT,kappa
-    integer :: step2,nb_pts 
     double precision:: step1
     rpho=1.151d15/unit_numberdensity ! number density at the bottom
     Tpho=8.d3/unit_temperature ! temperature of chromosphere
@@ -181,12 +178,37 @@ contains
        gg(j)=usr_grav*(SRadius/(SRadius+ya(j)))**2
     enddo
     !!=> solution of hydrostatic equation
-    nb=int(gzone/dya)
     ra(1)=rpho
     pa(1)=rpho*Tpho
     invT=gg(1)/Ta(1) !<1/H(y)
-    invT=0.d0
-    !=>scale height for HS equation
+!    invT=0.d0
+   endif
+
+ !=> set up of c7 profile
+   if(c7_profile) then   
+    allocate(ya(kmax),Ta(kmax),gg(kmax),pa(kmax),ra(kmax),Ha(kmax))
+    open (unit = 11, file ="atmos_data/c7/1dinterp/c7_rho.dat", status='old')
+    open (unit = 12, file ="atmos_data/c7/1dinterp/c7_Te.dat", status='old')
+    open (unit = 13, file ="atmos_data/c7/1dinterp/c7_y.dat", status='old')
+
+    do i=1,kmax  
+     read(11,*) ra(i) !kg m-3
+     read(12,*) Ta(i) !K
+     read(13,*) ya(i) !0-10Mm
+     ra(i) = ra(i)*1000/unit_density !SI to cgs to dimensionless 
+     Ta(i) = Ta(i)/unit_temperature
+     gg(i)=usr_grav*(SRadius/(SRadius+ya(i)))**2
+    end do 
+    close(11)
+    close(12)
+    close(13)
+    dya = ya(2) ! Cells size for C7 data
+    pa(1)=ra(1)*Ta(1) !The mistake is here. They multiply by a number density not density. Do we need to correct for this?
+    invT=gg(1)/Ta(1) !<1/H(y)
+   endif
+    
+   if(integrate) then
+   !=>scale height for HS equation
     do j=2,jmax
        invT=invT+(gg(j)/Ta(j)+gg(j-1)/Ta(j-1))*0.5d0
        pa(j)=pa(1)*dexp(invT*dya)
@@ -210,92 +232,27 @@ contains
      print*,'minra',minval(ra)
      print*,'rhob',rhob
      print*,'pb',pb
-    endif
-   endif
-
- !=> set up of c7 profile
-   if(c7_profile) then   
-    allocate(ya(kmax),Ta(kmax),gg(kmax),pa(kmax),ra(kmax),Ha(kmax))
-   !=> Data imported here is in SI units
-!   open (unit = 11, file ="atmos_data/c7/fort/rho.dat", status='old')
-!   open (unit = 12, file ="atmos_data/c7/fort/Temp.dat", status='old')
-!   open (unit = 13, file ="atmos_data/c7/fort/y.dat", status='old')
-
-   open (unit = 11, file ="atmos_data/c7/1dinterp/c7_rho.dat", status='old')
-   open (unit = 12, file ="atmos_data/c7/1dinterp/c7_Te.dat", status='old')
-   open (unit = 13, file ="atmos_data/c7/1dinterp/c7_y.dat", status='old')
-
-  do i=1,kmax  
-   read(11,*) ra(i) !kg m-3
-   read(12,*) Ta(i) !K
-   read(13,*) ya(i) !0-10Mm
-   ra(i) = ra(i)*0.001d0/unit_density !SI to cgs to dimensionless 
-   Ta(i) = Ta(i)/unit_temperature
-   gg(i)=usr_grav*(SRadius/(SRadius+ya(i)))**2
-  end do 
-   close(11)
-   close(12)
-   close(13)
-    
-    if(integrate) then
-    dyk = ya(2) ! Cells size for C7 data
-    pa(kmax)=ra(kmax)*Ta(kmax)
-    invT=gg(kmax)/Ta(kmax) !<1/H(z)
-!    invT=0.d0
-    !=>used scale height for HS equation
-    do i=kmax-1,1,-1
-       invT=invT+(gg(i)/Ta(i)+gg(i+1)/Ta(i+1))*0.5d0
-       Ha(i)=-1.0d0/((gg(i)/Ta(i)+gg(i+1)/Ta(i+1))*0.5d0)
-       pa(i)=pa(kmax)*dexp(-invT*dyk)
-       ra(i)=pa(i)/Ta(i)
-       if(mype==0)then
-!       write(*,*) ya(i),Ha(i),Ha(i)/((xprobmax2-xprobmin2)/domain_nx2)
-       endif
-    end do
-    !! initialized rho and p in the fixed bottom boundary
-    na=floor(gzone/dyk+0.5d0)
-    res=gzone-(dble(na)-0.5d0)*dyk !<= Residual
-    rhob=ra(na)+res/dyk*(ra(na+1)-ra(na))
-    pb=pa(na)+res/dyk*(pa(na+1)-pa(na))
-    allocate(rbc(nghostcells))
-    allocate(pbc(nghostcells))
-    do ibc=nghostcells,1,-1
-      na=floor((gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0))/dyk+0.5d0)
-      res=gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0)-(dble(na)-0.5d0)*dyk
-      rbc(ibc)=ra(na)+res/dyk*(ra(na+1)-ra(na))
-      pbc(ibc)=pa(na)+res/dyk*(pa(na+1)-pa(na))
-    end do
-
-    if (mype==0) then
-     print*,'minra',minval(ra)
-     print*,'rhob',rhob
-     print*,'pb',pb
-    endif
- endif
+    endif 
    endif
 
    if(derivative)then
-    dyk = ya(2) ! Cells size for C7 data
-        !! solution of hydrostatic equation 
-    pa(1)=ra(1)*Ta(1)
     do j=2,jmax
-        pa(j)=(pa(j-1)+dyk*(gg(j)+gg(j-1))*ra(j-1)/4.d0)/(one-dyk*(gg(j)+gg(j-1))/Ta(j)/4.d0)
+      pa(j)=(pa(j-1)+dya*(gg(j)+gg(j-1))*ra(j-1)/4.d0)/(one-dya*(gg(j)+gg(j-1))/Ta(j)/4.d0)
       ra(j)=pa(j)/Ta(j)
     end do
     !! initialized rho and p in the fixed bottom boundary
-    na=floor(gzone/dyk+0.5d0)
-    res=gzone-(dble(na)-0.5d0)*dyk
-    rhob=ra(na)+res/dyk*(ra(na+1)-ra(na))
-    pb=pa(na)+res/dyk*(pa(na+1)-pa(na))
+    na=floor(gzone/dya+0.5d0)
+    res=gzone-(dble(na)-0.5d0)*dya
+    rhob=ra(na)+res/dya*(ra(na+1)-ra(na))
+    pb=pa(na)+res/dya*(pa(na+1)-pa(na))
     allocate(rbc(nghostcells))
     allocate(pbc(nghostcells))
     do ibc=nghostcells,1,-1
-      na=floor((gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0))/dyk+0.5d0)
-      res=gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0)-(dble(na)-0.5d0)*dyk
-      rbc(ibc)=ra(na)+res/dyk*(ra(na+1)-ra(na))
-      pbc(ibc)=pa(na)+res/dyk*(pa(na+1)-pa(na))
+      na=floor((gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0))/dya+0.5d0)
+      res=gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0)-(dble(na)-0.5d0)*dya
+      rbc(ibc)=ra(na)+res/dya*(ra(na+1)-ra(na))
+      pbc(ibc)=pa(na)+res/dya*(pa(na+1)-pa(na))
     end do
-
    endif
   end subroutine inithdstatic
 
@@ -310,7 +267,6 @@ contains
 
     double precision :: res,step1
     integer :: ix^D,na,i
-    integer :: nb_pts
     logical, save :: first=.true.
     double precision :: width, A, y0,x0
 
@@ -337,30 +293,12 @@ contains
     endif
       
     if(.NOT.firstprocess)then
-    if(tanh_profile) then
-    {do ix^DB=ixOmin^DB,ixOmax^DB\}
-        na=floor((x(ix^D,2)-xprobmin2+gzone)/dya+0.5d0)
-        res=x(ix^D,2)-xprobmin2+gzone-(dble(na)-0.5d0)*dya
-        w(ix^D,rho_)=ra(na)+(one-cos(dpi*res/dya))/two*(ra(na+1)-ra(na))
-        w(ix^D,p_)=pa(na)+(one-cos(dpi*res/dya))/two*(pa(na+1)-pa(na))
-    {end do\}
-    endif
-
-    if(c7_profile) then
-!    dyk = ya(2) ! Cells size for C7 data
-!    nb_pts = domain_nx2+2*nghostcells 
-!=> interpolation to obtain rho & p of HSE
-    do ix2=ixOmin2,ixOmax2
-    do ix1=ixOmin1,ixOmax1
-        na=floor((x(ix^D,2)-xprobmin2+gzone)/dyk+0.5d0)
-        res=x(ix^D,2)-xprobmin2+gzone-(dble(na)-0.5d0)*dyk
-        w(ix^D,rho_)=ra(na)+(one-cos(dpi*res/dyk))/two*(ra(na+1)-ra(na))
-        w(ix^D,p_)=pa(na)+(one-cos(dpi*res/dyk))/two*(pa(na+1)-pa(na))
-    enddo
-!        write(*,*)na,floor(x(ix^D,2)+0.5d0),pa(na),ra(na),dyk,floor(x(ix^D,2)-xprobmin2+gzone+0.5d0) 
-    enddo
-
-    endif
+     {do ix^DB=ixOmin^DB,ixOmax^DB\}
+       na=floor((x(ix^D,2)-xprobmin2+gzone)/dya+0.5d0)
+       res=x(ix^D,2)-xprobmin2+gzone-(dble(na)-0.5d0)*dya
+       w(ix^D,rho_)=ra(na)+(one-cos(dpi*res/dya))/two*(ra(na+1)-ra(na))
+       w(ix^D,p_)=pa(na)+(one-cos(dpi*res/dya))/two*(pa(na+1)-pa(na))
+     {end do\}
     endif
 
     if(B0field .or. iprob==0) then
@@ -640,7 +578,7 @@ contains
     double precision                   :: normconv(0:nw+nwauxio)
 
     double precision :: pth(ixI^S),B2(ixI^S),tmp2(ixI^S),dRdT(ixI^S)
-    double precision :: ens(ixI^S),divb(ixI^S)
+    double precision :: ens(ixI^S),divb(ixI^S),wlocal(ixI^S,1:nw)
     double precision :: Btotal(ixI^S,1:ndir),curlvec(ixI^S,1:ndir)
     integer :: idirmin,idir,ix^D
 
@@ -650,8 +588,10 @@ contains
     integer         :: idims
     logical, save   :: firstrun=.true.
     ! output temperature
-    call mhd_get_pthermal(w,x,ixI^L,ixO^L,pth)
-    w(ixO^S,nw+1)=pth(ixO^S)/w(ixO^S,rho_)
+    wlocal(ixI^S,1:nw)=w(ixI^S,1:nw)
+    ! output temperature
+    call mhd_get_pthermal(wlocal,x,ixI^L,ixO^L,pth)
+    w(ixO^S,nw+1)=pth(ixO^S)/w(ixO^S,rho_)*unit_temperature
 
     do idir=1,ndir
       if(B0field) then
@@ -664,7 +604,7 @@ contains
     B2(ixO^S)=sum((Btotal(ixO^S,:))**2,dim=ndim+1)
 
     ! output Alfven wave speed B/sqrt(rho)
-    w(ixO^S,nw+2)=dsqrt(B2(ixO^S)/w(ixO^S,rho_))
+    w(ixO^S,nw+2)=dsqrt(B2(ixO^S)/w(ixO^S,rho_))*unit_velocity
 
     ! output divB1
     call divvector(Btotal,ixI^L,ixO^L,divb)
@@ -700,7 +640,7 @@ contains
       w(ixO^S,nw+6+idir)=curlvec(ixO^S,idir)
     end do
    
-    w(ixO^S,nw+9)=dsqrt(mhd_gamma*pth(ixO^S)/w(ixO^S,rho_))
+    w(ixO^S,nw+9)=dsqrt(mhd_gamma*pth(ixO^S)/w(ixO^S,rho_))*unit_velocity
 
      p(ixI^S)=pth(ixI^S)
      gradp(ixO^S)=zero

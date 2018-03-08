@@ -8,7 +8,7 @@
 !==============================================================
 
  &filelist
-        base_filename='/home/fionnlagh/work/dat/mhd/2d/bg/dim_'
+        base_filename='/home/fionnlagh/work/dat/mhd/2d/bg/test'
         saveprim=.T.
         autoconvert=.T.
         convert_type='vtuBCCmpi'
@@ -34,7 +34,7 @@
 
  &stoplist
         dtmin=1.D-12
-        time_max=600.0d0
+        time_max=1.0d0
 /
 
  &methodlist
@@ -94,8 +94,8 @@
     driver= .F.
     driver_random = .F.
     driver_kuz = .F.
-    derivative = .F.
-    integrate = .T.
+    derivative = .T.
+    integrate = .F.
 !    units_si = .T.
 !    units_cgs = .F.
 /
