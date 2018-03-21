@@ -8,7 +8,7 @@
 !==============================================================
 
  &filelist
-        base_filename='/home/fionnlagh/work/dat/mhd/2d/bg/test'
+        base_filename='/home/fionnlagh/work/dat/mhd/2d/bg/no_dims_'
         saveprim=.T.
         autoconvert=.T.
         convert_type='vtuBCCmpi'
@@ -23,7 +23,7 @@
         itsave(1,1)=0
         itsave(1,2)=0
         dtsave_log=10.0d0
-        dtsave_dat=1.0d0!=> adding slice output
+        dtsave_dat=0.5d0!=> adding slice output
         dtsave(3)=10.0d0 !<= slice output saved
         nslices=1        !<= number of slices
         slicedir(1)=1    !<= data is taken perp to dim select i.e
@@ -34,7 +34,7 @@
 
  &stoplist
         dtmin=1.D-12
-        time_max=1.0d0
+        time_max=10.0d0
 /
 
  &methodlist
@@ -82,6 +82,7 @@
         mhd_thermal_conduction=.F.
         mhd_radiative_cooling=.F.
         mhd_gravity=.T.
+        He_abundance=0.d0
         typedivbfix='powel'
         Busr=20.d0 
         B0field=.F.
@@ -94,7 +95,8 @@
     driver= .F.
     driver_random = .F.
     driver_kuz = .F.
-    derivative = .T.
+    derivative = .F.
+    derivative_2 = .T.
     integrate = .F.
 !    units_si = .T.
 !    units_cgs = .F.

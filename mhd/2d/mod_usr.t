@@ -8,7 +8,7 @@ module mod_usr
   integer, parameter :: jmax=8000
 
   double precision :: s0,s1,Bv,B_y,y_r
-  logical :: driver, tanh_profile, c7_profile, driver_kuz, driver_random, integrate, derivative 
+  logical :: driver, tanh_profile, c7_profile, driver_kuz, driver_random, integrate, derivative, derivative_2 
   double precision :: randphase(10), randA(10), randP(10)
   integer :: nxmodes
 
@@ -23,9 +23,9 @@ contains
     mhd_gamma=1.66666667d0
     mhd_eta=zero ! This gives idea MHD
 
-    unit_length        = 1.d8  ! cm = 1 Mm
-    unit_temperature   = 1.d6  ! K
-    unit_numberdensity = 1.d9  ! cm^-3
+    unit_length        = 1!1.d8  ! cm = 1 Mm
+    unit_temperature   = 1!1.d6  ! K
+    unit_numberdensity = 1!1.d9  ! cm^-3
 
 !    unit_pressure = unit_temperature*unit_density
 
@@ -50,7 +50,7 @@ contains
   character(len=*), intent(in) :: files(:)
   integer                      :: n
 
-  namelist /my_switches/ driver, driver_kuz, driver_random, tanh_profile, c7_profile, integrate,derivative 
+  namelist /my_switches/ driver, driver_kuz, driver_random, tanh_profile, c7_profile, integrate,derivative, derivative_2
   do n = 1, size(files)
    open(unitpar, file=trim(files(n)), status="old")
        read(unitpar, my_switches, end=111)
@@ -120,7 +120,7 @@ contains
       allocate(seed(seed_size))
       call random_seed(GET=seed(1:seed_size))
       call random_number(randphaseP1(1:nxmodes))
-      randphase(1:nxmodes)=-dpi+two*dpi*dble(randphaseP1(1:nxmodes))
+      randphase(1:nxmodes)=-dpi+2.0d0*dpi*dble(randphaseP1(1:nxmodes))
       call random_number(randA1(1:nxmodes))
       randA(1:nxmodes)=(1.0d3+floor(randA1(1:nxmodes)*1.01d5))/unit_velocity !1m/s-1km/s
       call random_number(randP1(1:nxmodes))
@@ -162,11 +162,12 @@ contains
     Ttr=1.6d5/unit_temperature ! lowest temperature of upper profile
     Fc=2.d5/heatunit/unit_length ! constant thermal conduction flux
     kappa=8.d-7*unit_temperature**3.5d0/unit_length/unit_density/unit_velocity**3
+
+    allocate(ya(jmax),Ta(jmax),gg(jmax),pa(jmax),ra(jmax),Ha(jmax))
    
    !=> set up of tanh profile
    if(tanh_profile) then    
     !=> creates temperture profile
-    allocate(ya(jmax),Ta(jmax),gg(jmax),pa(jmax),ra(jmax))
     do j=1,jmax
        ya(j)=(dble(j)-0.5d0)*dya-gzone
       !<=remove for steeper T profile 
@@ -186,16 +187,15 @@ contains
 
  !=> set up of c7 profile
    if(c7_profile) then   
-    allocate(ya(kmax),Ta(kmax),gg(kmax),pa(kmax),ra(kmax),Ha(kmax))
     open (unit = 11, file ="atmos_data/c7/1dinterp/c7_rho.dat", status='old')
     open (unit = 12, file ="atmos_data/c7/1dinterp/c7_Te.dat", status='old')
     open (unit = 13, file ="atmos_data/c7/1dinterp/c7_y.dat", status='old')
 
-    do i=1,kmax  
+    do i=1,jmax  
      read(11,*) ra(i) !kg m-3
      read(12,*) Ta(i) !K
      read(13,*) ya(i) !0-10Mm
-     ra(i) = ra(i)*1000/unit_density !SI to cgs to dimensionless 
+     ra(i) = ra(i)*1.0d-3/unit_density !SI to cgs to dimensionless 
      Ta(i) = Ta(i)/unit_temperature
      gg(i)=usr_grav*(SRadius/(SRadius+ya(i)))**2
     end do 
@@ -254,6 +254,27 @@ contains
       pbc(ibc)=pa(na)+res/dya*(pa(na+1)-pa(na))
     end do
    endif
+
+   if(derivative_2)then
+    do j=2,jmax
+      pa(j)=(pa(j-1)+dya*(gg(j)+gg(j-1))*ra(j-1)/4.d0)/(one-dya*(gg(j)+gg(j-1))/Ta(j)/4.d0)
+      ra(j)=pa(j)/Ta(j)
+    end do
+    !! initialized rho and p in the fixed bottom boundary
+    na=floor(gzone/dya+0.5d0)
+    res=gzone-(dble(na)-0.5d0)*dya
+    rhob=ra(na)+res/dya*(ra(na+1)-ra(na))
+    pb=pa(na)+res/dya*(pa(na+1)-pa(na))
+    allocate(rbc(nghostcells))
+    allocate(pbc(nghostcells))
+    do ibc=nghostcells,1,-1
+      na=floor((gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0))/dya+0.5d0)
+      res=gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0)-(dble(na)-0.5d0)*dya
+      rbc(ibc)=ra(na)+res/dya*(ra(na+1)-ra(na))
+      pbc(ibc)=pa(na)+res/dya*(pa(na+1)-pa(na))
+    end do
+   endif
+
   end subroutine inithdstatic
 
   subroutine initonegrid_usr(ixI^L,ixO^L,w,x)
@@ -296,8 +317,8 @@ contains
      {do ix^DB=ixOmin^DB,ixOmax^DB\}
        na=floor((x(ix^D,2)-xprobmin2+gzone)/dya+0.5d0)
        res=x(ix^D,2)-xprobmin2+gzone-(dble(na)-0.5d0)*dya
-       w(ix^D,rho_)=ra(na)+(one-cos(dpi*res/dya))/two*(ra(na+1)-ra(na))
-       w(ix^D,p_)=pa(na)+(one-cos(dpi*res/dya))/two*(pa(na+1)-pa(na))
+       w(ix^D,rho_)=ra(na)+(one-cos(dpi*res/dya))/2.0d0*(ra(na+1)-ra(na))
+       w(ix^D,p_)=pa(na)+(one-cos(dpi*res/dya))/2.0d0*(pa(na+1)-pa(na))
      {end do\}
     endif
 
@@ -611,7 +632,7 @@ contains
     w(ixO^S,nw+3)=0.5d0*divb(ixO^S)/dsqrt(B2(ixO^S))/(^D&1.0d0/dxlevel(^D)+)
 
     ! output the plasma beta p*2/B**2
-    w(ixO^S,nw+4)=pth(ixO^S)*two/B2(ixO^S)
+    w(ixO^S,nw+4)=pth(ixO^S)*2.0d0/B2(ixO^S)
 
      rho(ixI^S)=w(ixI^S,rho_)
      gradrho(ixO^S)=zero
