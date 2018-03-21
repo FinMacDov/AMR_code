@@ -153,7 +153,6 @@ contains
     integer :: j,na,ibc, i, k
     double precision, allocatable :: Ta(:),gg(:)
     double precision:: rpho,Ttop,Tpho,wtra,res,rhob,pb,htra,Ttr,Fc,invT,kappa
-    double precision:: step1
     rpho=1.151d15/unit_numberdensity ! number density at the bottom
     Tpho=8.d3/unit_temperature ! temperature of chromosphere
     Ttop=1.8d6/unit_temperature ! estimated temperature in the top
@@ -257,21 +256,7 @@ contains
 
    if(derivative_2)then
     do j=2,jmax
-      pa(j)=(pa(j-1)+dya*(gg(j)+gg(j-1))*ra(j-1)/4.d0)/(one-dya*(gg(j)+gg(j-1))/Ta(j)/4.d0)
-      ra(j)=pa(j)/Ta(j)
-    end do
-    !! initialized rho and p in the fixed bottom boundary
-    na=floor(gzone/dya+0.5d0)
-    res=gzone-(dble(na)-0.5d0)*dya
-    rhob=ra(na)+res/dya*(ra(na+1)-ra(na))
-    pb=pa(na)+res/dya*(pa(na+1)-pa(na))
-    allocate(rbc(nghostcells))
-    allocate(pbc(nghostcells))
-    do ibc=nghostcells,1,-1
-      na=floor((gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0))/dya+0.5d0)
-      res=gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0)-(dble(na)-0.5d0)*dya
-      rbc(ibc)=ra(na)+res/dya*(ra(na+1)-ra(na))
-      pbc(ibc)=pa(na)+res/dya*(pa(na+1)-pa(na))
+      pa(j)=ra(j)*Ta(j)
     end do
    endif
 
@@ -286,7 +271,7 @@ contains
     double precision, intent(in) :: x(ixI^S,1:ndim)
     double precision, intent(inout) :: w(ixI^S,1:nw)
 
-    double precision :: res,step1
+    double precision :: res,delta_y
     integer :: ix^D,na,i
     logical, save :: first=.true.
     double precision :: width, A, y0,x0
@@ -320,6 +305,35 @@ contains
        w(ix^D,rho_)=ra(na)+(one-cos(dpi*res/dya))/2.0d0*(ra(na+1)-ra(na))
        w(ix^D,p_)=pa(na)+(one-cos(dpi*res/dya))/2.0d0*(pa(na+1)-pa(na))
      {end do\}
+ 
+    if(derivative_2)then
+     do ix2=ixOmin1,ixOmax1
+      do ix1=ixOmax2-1,ixOmin2, -1
+       delta_y = -abs(x(ix1,ix_2+1,2)-x(ix1,ix2,2)
+       w(ix1,ix2,p_)= w(ix1,ix2+1,p_)+w(ix1,ix2,rho_)*delta_y*(usr_grav*(SRadius/(SRadius+x(ix1,ix2,2)*1.0d8))**2)
+      enddo
+     enddo    
+
+     p(ixI^S)=pth(ixI^S)
+     gradp(ixO^S)=zero
+     do idims=1,ndim
+       select case(typegrad)
+       case("central")
+         call gradient(p,ixI^L,ixO^L,idims,dp)
+       case("limited")
+         call gradientS(p,ixI^L,ixO^L,idims,dp)
+       end select
+       gradp(ixO^S)=gradp(ixO^S)+dp(ixO^S)**2.0d0
+     enddo
+     gradp(ixO^S)=dsqrt(gradp(ixO^S))
+
+     do ix2=ixOmin1,ixOmax1
+      do ix1=ixOmax2-1,ixOmin2-1, -1
+       w(ix1,ix2,rho_)=(-1.0d0/(usr_grav*(SRadius/(SRadius+x(ix1,ix2,2)*1.0d8))**2))*gradp
+      enddo
+     enddo
+    endif
+
     endif
 
     if(B0field .or. iprob==0) then
@@ -395,7 +409,7 @@ contains
     double precision :: v_sum
     double precision :: pth(ixI^S),tmp(ixI^S),ggrid(ixI^S),invT(ixI^S)
     double precision :: delydelx, x0, y0, width
-    double precision ::jet_w, jet_h, A, period, deltax, deltay, step1
+    double precision ::jet_w, jet_h, A, period, deltax, deltay
     integer :: ind^D, na, i
     integer :: ix^D,idir,ixInt^L
     integer :: nb_pts
