@@ -8,7 +8,7 @@
 !==============================================================
 
  &filelist
-        base_filename='/home/fionnlagh/work/dat/mhd/2d/bg/no_dims_'
+        base_filename='/home/fionnlagh/work/dat/mhd/2d/bg/grad_'
         saveprim=.T.
         autoconvert=.T.
         convert_type='vtuBCCmpi'
@@ -50,8 +50,8 @@
         nghostcells=2
         typeboundary_min1 = 8*'periodic'
         typeboundary_max1 = 8*'periodic'
-        typeboundary_min2 = 8*'special'
-        typeboundary_max2 = 8*'special'
+        typeboundary_min2 = 8*'cont'!'special'
+        typeboundary_max2 = 8*'cont'!'special'
 /
 
  &meshlist

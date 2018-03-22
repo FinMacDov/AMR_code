@@ -275,6 +275,8 @@ contains
     integer :: ix^D,na,i
     logical, save :: first=.true.
     double precision :: width, A, y0,x0
+    double precision:: gradp(ixG^T),dp(ixG^T)
+    integer         :: idims
 
     if(first)then
       if(mype==0) then
@@ -305,33 +307,44 @@ contains
        w(ix^D,rho_)=ra(na)+(one-cos(dpi*res/dya))/2.0d0*(ra(na+1)-ra(na))
        w(ix^D,p_)=pa(na)+(one-cos(dpi*res/dya))/2.0d0*(pa(na+1)-pa(na))
      {end do\}
- 
-    if(derivative_2)then
+
+
+!   if(mype==0)then
+!       write(*,*), w(ixO^S,p_)
+!       write(*,*), w(3,ixOmin2:ixOmax2 ,p_)!,w(1,10,p_),w(1,9,p_),w(1,8,p_)
+!      do ix2=ixOmax2-1,ixOmin2-1, -1
+!       write(*,*), w(1,ix2+1,p_),x(1,ix2,2), ix2
+!      enddo
+
+!> reminder for indexs, should remove
+!    write(*,*), 'ixO' ,ixOmin1,ixOmax1,ixOmin2,ixOmax2  
+!    write(*,*), 'ixI' ,ixImin1,ixImax1,ixImin2,ixImax2  
+!    write(*,*), 'ixG' ,ixGlo1,ixGhi1,ixGlo2,ixGhi2   
+!   endif
+
+
+   if(derivative_2)then
      do ix2=ixOmin1,ixOmax1
       do ix1=ixOmax2-1,ixOmin2, -1
-       delta_y = -abs(x(ix1,ix_2+1,2)-x(ix1,ix2,2)
-       w(ix1,ix2,p_)= w(ix1,ix2+1,p_)+w(ix1,ix2,rho_)*delta_y*(usr_grav*(SRadius/(SRadius+x(ix1,ix2,2)*1.0d8))**2)
-      enddo
+       delta_y = -abs(x(ix1,ix2+1,2)-x(ix1,ix2,2))
+       w(ix^D,p_) = w(ix1,ix2+1,p_)+w(ix1,ix2,rho_)*delta_y*(usr_grav*(SRadius/(SRadius+x(ix^D,2)*1.0d8))**2) 
+     enddo
      enddo    
 
-     p(ixI^S)=pth(ixI^S)
      gradp(ixO^S)=zero
      do idims=1,ndim
        select case(typegrad)
        case("central")
-         call gradient(p,ixI^L,ixO^L,idims,dp)
+         call gradient(w(ixI^S,p_),ixI^L,ixO^L,idims,dp)
        case("limited")
-         call gradientS(p,ixI^L,ixO^L,idims,dp)
+         call gradientS(w(ixI^S,p_),ixI^L,ixO^L,idims,dp)
        end select
        gradp(ixO^S)=gradp(ixO^S)+dp(ixO^S)**2.0d0
      enddo
      gradp(ixO^S)=dsqrt(gradp(ixO^S))
 
-     do ix2=ixOmin1,ixOmax1
-      do ix1=ixOmax2-1,ixOmin2-1, -1
-       w(ix1,ix2,rho_)=(-1.0d0/(usr_grav*(SRadius/(SRadius+x(ix1,ix2,2)*1.0d8))**2))*gradp
-      enddo
-     enddo
+     w(ixO^S,rho_)=(-1.0d0/(usr_grav*(SRadius/(SRadius+x(ixO^S,2)*1.0d8))**2))*gradp(ixO^S)
+
     endif
 
     endif
