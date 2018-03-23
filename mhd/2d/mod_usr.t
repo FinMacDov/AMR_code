@@ -322,11 +322,10 @@ contains
 !    write(*,*), 'ixG' ,ixGlo1,ixGhi1,ixGlo2,ixGhi2   
 !   endif
 
-
    if(derivative_2)then
-     do ix2=ixOmin1,ixOmax1
-      do ix1=ixOmax2-1,ixOmin2, -1
-       delta_y = -abs(x(ix1,ix2+1,2)-x(ix1,ix2,2))
+     do ix1=ixOmin1,ixOmax1
+      do ix2=ixOmax2-1,ixOmin2, -1
+       delta_y = -abs(x(ix1,ix2+1,2)-x(ix^D,2))*1.0d8
        w(ix^D,p_) = w(ix1,ix2+1,p_)+w(ix1,ix2,rho_)*delta_y*(usr_grav*(SRadius/(SRadius+x(ix^D,2)*1.0d8))**2) 
      enddo
      enddo    
@@ -343,8 +342,7 @@ contains
      enddo
      gradp(ixO^S)=dsqrt(gradp(ixO^S))
 
-     w(ixO^S,rho_)=(-1.0d0/(usr_grav*(SRadius/(SRadius+x(ixO^S,2)*1.0d8))**2))*gradp(ixO^S)
-
+     w(ixO^S,rho_)=-(1.0d0/(usr_grav*(SRadius/(SRadius+x(ixO^S,2)*1.0d8))**2))*gradp(ixO^S)
     endif
 
     endif
