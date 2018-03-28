@@ -8,7 +8,7 @@
 !==============================================================
 
  &filelist
-        base_filename='/home/fionnlagh/work/dat/mhd/2d/bg/grad_'
+        base_filename='/home/fionnlagh/work/dat/mhd/2d/bg/grad_U'
         saveprim=.T.
         autoconvert=.T.
         convert_type='vtuBCCmpi'
@@ -34,13 +34,14 @@
 
  &stoplist
         dtmin=1.D-12
-        time_max=10.0d0
+        time_max=11.0d0
 /
 
  &methodlist
         time_integrator='threestep' 
         flux_scheme=20*'hlld'
         limiter= 20*'cada3'
+        typegrad = 'limited'
 !        small_values_method='error'
 !        small_pressure=1.0d-14
 !        small_density=1.0d-14
@@ -50,21 +51,21 @@
         nghostcells=2
         typeboundary_min1 = 8*'periodic'
         typeboundary_max1 = 8*'periodic'
-        typeboundary_min2 = 8*'cont'!'special'
-        typeboundary_max2 = 8*'cont'!'special'
+        typeboundary_min2 = 8*'special'!'cont'!'special'
+        typeboundary_max2 = 8*'special'!'cont'!'special'
 /
 
  &meshlist
-        refine_max_level=1
+        refine_max_level=3
         refine_criterion=3
         w_refine_weight(1)=0.4d0
         w_refine_weight(6)=0.2d0
         w_refine_weight(7)=0.2d0
         w_refine_weight(8)=0.2d0
         block_nx1=4
-        block_nx2=10
+        block_nx2=4
         domain_nx1=4
-        domain_nx2=400
+        domain_nx2=600
         iprob=0
         xprobmin1=-0.5d0
         xprobmax1=0.5d0
@@ -90,14 +91,15 @@
  /
 
 &my_switches
-    tanh_profile= .F.
-    c7_profile = .T.
+    tanh_profile= .T.
+    c7_profile = .F.
     driver= .F.
     driver_random = .F.
     driver_kuz = .F.
     derivative = .F.
-    derivative_2 = .T.
-    integrate = .F.
+    derivative_2 = .F.
+    integrate = .T.
+    driver_injetion = .T.
 !    units_si = .T.
 !    units_cgs = .F.
 /

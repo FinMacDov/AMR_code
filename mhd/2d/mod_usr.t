@@ -8,7 +8,7 @@ module mod_usr
   integer, parameter :: jmax=8000
 
   double precision :: s0,s1,Bv,B_y,y_r
-  logical :: driver, tanh_profile, c7_profile, driver_kuz, driver_random, integrate, derivative, derivative_2 
+  logical :: driver, tanh_profile, c7_profile, driver_kuz, driver_random, integrate, derivative, derivative_2, driver_injetion 
   double precision :: randphase(10), randA(10), randP(10)
   integer :: nxmodes
 
@@ -23,9 +23,9 @@ contains
     mhd_gamma=1.66666667d0
     mhd_eta=zero ! This gives idea MHD
 
-    unit_length        = 1!1.d8  ! cm = 1 Mm
-    unit_temperature   = 1!1.d6  ! K
-    unit_numberdensity = 1!1.d9  ! cm^-3
+    unit_length        = 1.d8  ! cm = 1 Mm
+    unit_temperature   = 1.d6  ! K
+    unit_numberdensity = 1.d9  ! cm^-3
 
 !    unit_pressure = unit_temperature*unit_density
 
@@ -50,7 +50,7 @@ contains
   character(len=*), intent(in) :: files(:)
   integer                      :: n
 
-  namelist /my_switches/ driver, driver_kuz, driver_random, tanh_profile, c7_profile, integrate,derivative, derivative_2
+  namelist /my_switches/ driver, driver_kuz, driver_random, tanh_profile, c7_profile, integrate,derivative, derivative_2, driver_injetion
   do n = 1, size(files)
    open(unitpar, file=trim(files(n)), status="old")
        read(unitpar, my_switches, end=111)
@@ -258,6 +258,18 @@ contains
     do j=2,jmax
       pa(j)=ra(j)*Ta(j)
     end do
+    na=floor(gzone/dya+0.5d0)
+    res=gzone-(dble(na)-0.5d0)*dya
+    rhob=ra(na)+res/dya*(ra(na+1)-ra(na))
+    pb=pa(na)+res/dya*(pa(na+1)-pa(na))
+    allocate(rbc(nghostcells))
+    allocate(pbc(nghostcells))
+    do ibc=nghostcells,1,-1
+      na=floor((gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0))/dya+0.5d0)
+      res=gzone-dx(2,refine_max_level)*(dble(nghostcells-ibc+1)-0.5d0)-(dble(na)-0.5d0)*dya
+      rbc(ibc)=ra(na)+res/dya*(ra(na+1)-ra(na))
+      pbc(ibc)=pa(na)+res/dya*(pa(na+1)-pa(na))
+    end do
    endif
 
   end subroutine inithdstatic
@@ -301,13 +313,14 @@ contains
     endif
       
     if(.NOT.firstprocess)then
-     {do ix^DB=ixOmin^DB,ixOmax^DB\}
+     {do ix^DB=ixImin^DB,ixImax^DB\}
        na=floor((x(ix^D,2)-xprobmin2+gzone)/dya+0.5d0)
        res=x(ix^D,2)-xprobmin2+gzone-(dble(na)-0.5d0)*dya
-       w(ix^D,rho_)=ra(na)+(one-cos(dpi*res/dya))/2.0d0*(ra(na+1)-ra(na))
-       w(ix^D,p_)=pa(na)+(one-cos(dpi*res/dya))/2.0d0*(pa(na+1)-pa(na))
+       w(ix^D,rho_)=ra(na)!+(one-cos(dpi*res/dya))/2.0d0*(ra(na+1)-ra(na))
+       w(ix^D,p_)=pa(na)!+(one-cos(dpi*res/dya))/2.0d0*(pa(na+1)-pa(na))
      {end do\}
 
+print*,'test', mype
 
 !   if(mype==0)then
 !       write(*,*), w(ixO^S,p_)
@@ -323,10 +336,10 @@ contains
 !   endif
 
    if(derivative_2)then
-     do ix1=ixOmin1,ixOmax1
-      do ix2=ixOmax2-1,ixOmin2, -1
-       delta_y = -abs(x(ix1,ix2+1,2)-x(ix^D,2))*1.0d8
-       w(ix^D,p_) = w(ix1,ix2+1,p_)+w(ix1,ix2,rho_)*delta_y*(usr_grav*(SRadius/(SRadius+x(ix^D,2)*1.0d8))**2) 
+     do ix1=ixImin1,ixImax1
+      do ix2=ixImax2-1,ixImin2, -1
+       delta_y = -abs(x(ix1,ix2+1,2)-x(ix^D,2))!*1.0d8
+       w(ix^D,p_) = w(ix1,ix2+1,p_)+w(ix1,ix2,rho_)*delta_y*(usr_grav*(SRadius/(SRadius+x(ix^D,2)))**2) 
      enddo
      enddo    
 
@@ -342,7 +355,7 @@ contains
      enddo
      gradp(ixO^S)=dsqrt(gradp(ixO^S))
 
-     w(ixO^S,rho_)=-(1.0d0/(usr_grav*(SRadius/(SRadius+x(ixO^S,2)*1.0d8))**2))*gradp(ixO^S)
+     w(ixI^S,rho_)=-(1.0d0/(usr_grav*(SRadius/(SRadius+x(ixI^S,2)))**2))*gradp(ixI^S)
     endif
 
     endif
@@ -472,6 +485,24 @@ contains
 
       !=> Driver
       if(driver) then 
+      jet_w = (xprobmax1-xprobmin1)/domain_nx1 !<= 1 cell radius 
+      jet_h = (xprobmax2-xprobmin2)/domain_nx2
+      A = 5.0d4/unit_velocity !500 m/s !5.0d6/unit_velocity!
+      deltax = (xprobmax1-xprobmin1)/domain_nx1
+      deltay = (xprobmax2-xprobmin2)/domain_nx2
+      x0 =(xprobmax1-abs(xprobmin1))/2.0d0+0.0d0 !<=x origin
+      y0 =-gzone !<=y origin
+      period = 30.0d0/unit_time
+        w(ixO^S,mom(2))= A*dsin(2.0d0*dpi*qt/period)*&
+                         dexp(-(((x(ixO^S,1)-x0)/deltax)**2&
+                         +((x(ixO^S,2)-y0)/deltay)**2))
+        if(mhd_n_tracer>0) then
+          w(ind^D,tracer(1))=100.0d0
+        endif
+      endif
+
+      !=> Driver
+      if(driver_injetion) then 
       jet_w = (xprobmax1-xprobmin1)/domain_nx1 !<= 1 cell radius 
       jet_h = (xprobmax2-xprobmin2)/domain_nx2
       A = 5.0d4/unit_velocity !500 m/s !5.0d6/unit_velocity!
