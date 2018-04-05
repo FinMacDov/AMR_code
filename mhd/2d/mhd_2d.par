@@ -8,7 +8,7 @@
 !==============================================================
 
  &filelist
-        base_filename='/home/fionnlagh/work/dat/mhd/2d/bg/grad_U'
+        base_filename='/home/fionnlagh/work/dat/mhd/2d/jet_test/jet_test_'
         saveprim=.T.
         autoconvert=.T.
         convert_type='vtuBCCmpi'
@@ -34,7 +34,7 @@
 
  &stoplist
         dtmin=1.D-12
-        time_max=11.0d0
+        time_max=100.0d0
 /
 
  &methodlist
@@ -56,7 +56,7 @@
 /
 
  &meshlist
-        refine_max_level=3
+        refine_max_level=1
         refine_criterion=3
         w_refine_weight(1)=0.4d0
         w_refine_weight(6)=0.2d0
@@ -64,7 +64,7 @@
         w_refine_weight(8)=0.2d0
         block_nx1=4
         block_nx2=4
-        domain_nx1=4
+        domain_nx1=12
         domain_nx2=600
         iprob=0
         xprobmin1=-0.5d0

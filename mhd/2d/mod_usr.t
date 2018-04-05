@@ -501,29 +501,28 @@ contains
 
       !=> Driver
       if(driver_injetion) then 
-      jet_w = 2.0d0*(xprobmax1-xprobmin1)/domain_nx1 !<= 1 cell radius 
-      jet_h = 2.0d0*(xprobmax2-xprobmin2)/domain_nx2
-      A = 5.08/unit_velocity!5.0d4/unit_velocity !500 m/s !
-      deltax = (xprobmax1-xprobmin1)/domain_nx1
-      deltay = (xprobmax2-xprobmin2)/domain_nx2
-      x0 =(xprobmax1-abs(xprobmin1))/2.0d0+0.0d0 !<=x origin
-      y0 =-gzone !<=y origin
-      period = 10.0d0/unit_time
-       do ix2=ixOmin2,ixOmax2
-        do ix1=ixOmin1,ixOmax1
-         if (x(ix^D,2).le. jet_h .and. x(ix^D,1).le.jet_w/2.0d0 .and. x(ix^D,1).ge.-jet_w/2.0d0) then
-         w(ix^D,rho_) = ra(100)*dexp(-(((x(ix^D,1)-x0)/deltax)**2&
-                         +((x(ix^D,2)-y0)/deltay)**2))
-         w(ix^D,mom(2))  = A*tanh(2.0d0*dpi*qt/period)*&
-                         dexp(-(((x(ix^D,1)-x0)/deltax)**2&
-                         +((x(ix^D,2)-y0)/deltay)**2))
-          print *, w(ix^D,mom(2))
-          if(mhd_n_tracer>0) then
-           w(ind^D,tracer(1))=100.0d0
-          endif
-         endif
-        enddo
-       enddo
+       jet_w = (xprobmax1-xprobmin1)/domain_nx1 !<= 1 cell radius 
+       jet_h = 0.0d0!2.0d0*(xprobmax2-xprobmin2)/domain_nx2
+       A = 9.0d7/unit_velocity!5.0d4/unit_velocity !500 m/s !
+       deltax = (xprobmax1-xprobmin1)/domain_nx1
+       deltay = (xprobmax2-xprobmin2)/domain_nx2
+       x0 =(xprobmax1-abs(xprobmin1))/2.0d0+0.0d0 !<=x origin
+       y0 =-gzone !<=y origin
+       period = 10.0d0/unit_time
+        where(dabs(x(ixO^S,1))<jet_w.and.x(ixO^S,2)<jet_h)
+         w(ixO^S,rho_)=rbc(1)
+!         w(ixO^S,e_)=pa(1000)
+         w(ixO^S,mom(1))=zero
+!         w(ixO^S,mom(2))=A*dexp(-dabs(x(ixO^S,1)))
+         w(ixO^S,mom(2))  = A*tanh(2.0d0*dpi*qt/period)*&
+                          dexp(-(((x(ix^D,1)-x0)/deltax)))
+!         w(ixO^S,mom(2))  = A*tanh(2.0d0*dpi*qt/period)*&
+!                          dexp(-(((x(ix^D,1)-x0)/deltax)**2&
+!                          +((x(ix^D,2)-y0)/deltay)**2))
+!       if(mhd_n_tracer>0) then
+!        w(ind^D,tracer(1))=100.0d0
+!       endif
+       end where
       endif
 
       if(driver_random)then
