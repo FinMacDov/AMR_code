@@ -1,5 +1,7 @@
 import csv
 import matplotlib.pyplot as plt
+from matplotlib import interactive
+from matplotlib import rcParams, cycler
 from scipy.interpolate import interp1d
 from matplotlib.colors import BoundaryNorm
 from matplotlib.ticker import MaxNLocator
@@ -16,11 +18,13 @@ Created on Wed May  9 13:12:34 2018
 def listdir_fullpath(d):
     return [os.path.join(d, f) for f in os.listdir(d)]
 
+
+interactive(True)
 F = False
 T = True
 
-colour_map = F
-line_plot = T
+colour_map = T
+line_plot = F
 
 # cgs
 runit = 2.3416704877999998E-015
@@ -32,7 +36,7 @@ timeunit = 155.658*2
 
 # location = '/home/fionnlagh/work/dat/mhd/2d/c7_relax_run_csv'
 # location = '/media/fionnlagh/W7_backup/c7test/longrun'
-location = '/media/fionnlagh/W7_backup/jet_simple/lvl4/slice1'
+location = '/home/fionnlagh/sim_data/jet_simple/slice1'
 
 global file_path
 file_path = os.path.abspath(location)
@@ -121,18 +125,39 @@ if colour_map == T:
     ax3.set_xlabel('Time [s]', fontsize=14)
     plt.show()
 elif line_plot == T:
-    fig1 = plt.figure(figsize=(14, 12))
     spacer = 0
-    for i in range(len(v2t)):
-        mach = np.sqrt(gamma*(pt[i]/rhot[i]))
-        v2t_cs = v2t/mach
-        v2t_cs[i] += spacer
-        spacer += vlimit/np.max(mach)
-        if i % 10 == 1:
-            plt.plot(yt, np.full(len(v2t_cs[i]), spacer), linestyle='--')
-            plt.plot(yt, v2t_cs[i])
+    zero_pts = np.zeros(len(v2t))
+    mach = np.sqrt(gamma*(np.array(pt)/np.array(rhot)))
+    v2t_cs_array = v2t/mach
+    # Selects every nth row
+    LIM = [0, 10]
+    v2t_cs = v2t_cs_array[LIM[0]::LIM[-1]].T
+    # Make color gradient
+    N = len(v2t_cs.T)
+    cmap = plt.cm.coolwarm
+    rcParams['axes.prop_cycle'] = cycler(color=cmap(np.linspace(0, 1, N)))
+
+    SPACER = 5
+    gaps = np.linspace(0, len(v2t_cs.T)*SPACER, len(v2t_cs.T))
+    line = np.full(len(gaps), 7)
+    zero_line = np.full((len(yt), len(gaps)), gaps)
+
+    fig2, ax2 = plt.subplots(figsize=(18, 20))
+
+    plt.plot(yt, v2t_cs+gaps)
+    plt.plot(yt, zero_line, linestyle='--')
+
+    labels = np.chararray(N, unicode=True, itemsize=5)
+    yt_label_pos = yt[LIM[0]::LIM[-1]].T
+    labels[:] = ' '
+    labels[::4] = (str(-SPACER))
+    labels[1::4] = ('0.0')
+    labels[2::4] = (str(SPACER))
+    plt.yticks(gaps, labels)
+
     plt.xlabel('y [Mm]')
     plt.ylabel('v2/cs')
-    plt.show()
+    plt.xlim(0, 10)
+
 else:
     print('I do nothing')
