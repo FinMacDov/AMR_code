@@ -19,12 +19,12 @@ def listdir_fullpath(d):
     return [os.path.join(d, f) for f in os.listdir(d)]
 
 
-interactive(True)
 F = False
 T = True
 
 colour_map = T
 line_plot = F
+vs_cs = T
 
 # cgs
 runit = 2.3416704877999998E-015
@@ -32,7 +32,7 @@ punit = 0.31754922400000002
 tunit = 1e6
 gamma = 5/3
 vunit = 11645084.295622544
-timeunit = 155.658*2
+timeunit = 2.14683
 
 # location = '/home/fionnlagh/work/dat/mhd/2d/c7_relax_run_csv'
 # location = '/media/fionnlagh/W7_backup/c7test/longrun'
@@ -93,20 +93,27 @@ for sim_time in range(spt, ept):
         Tet.append(Te_interp(yt))
 
 vlimit = np.floor(np.max(np.abs(v2t)))
+mach = np.sqrt(gamma*(np.array(pt)/np.array(rhot)))
+v2t_cs_array = v2t/mach
 
 if colour_map == T:
     H, Tunit = np.meshgrid(yt, tick)
-
     # https://matplotlib.org/examples/color/colormaps_reference.html
-    levels1 = MaxNLocator(nbins=500).tick_values(-vlimit, vlimit)
-    cmap1 = plt.get_cmap('seismic')
-    norm1 = BoundaryNorm(levels1, ncolors=cmap1.N)
-
-    fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, figsize=(8, 10),
+    fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, figsize=(18, 20),
                                         dpi=80, facecolor='w', edgecolor='k')
-
-    cf1 = ax1.contourf(Tunit, H, v2t, cmap=cmap1, levels=levels1)
-    fig.colorbar(cf1, ax=ax1, label='v2 [m s-1]')  # v2 units
+    if vs_cs == T:
+        v_cs_limit = np.floor(np.max(np.abs(v2t_cs_array)))
+        levels1 = MaxNLocator(nbins=500).tick_values(-v_cs_limit, v_cs_limit)
+        cmap1 = plt.get_cmap('seismic')
+        norm1 = BoundaryNorm(levels1, ncolors=cmap1.N)
+        cf1 = ax1.contourf(Tunit, H, v2t_cs_array, cmap=cmap1, levels=levels1)
+        fig.colorbar(cf1, ax=ax1, label='v2/cs [m s-1]')  # v2 units
+    else:
+        levels1 = MaxNLocator(nbins=500).tick_values(-vlimit, vlimit)
+        cmap1 = plt.get_cmap('seismic')
+        norm1 = BoundaryNorm(levels1, ncolors=cmap1.N)
+        cf1 = ax1.contourf(Tunit, H, v2t, cmap=cmap1, levels=levels1)
+        fig.colorbar(cf1, ax=ax1, label='v2 [m s-1]')  # v2 units
 
     cmap2 = plt.get_cmap('hot')
     levels2 = MaxNLocator(nbins=100).tick_values(np.min(rhot), np.max(rhot))
@@ -127,8 +134,6 @@ if colour_map == T:
 elif line_plot == T:
     spacer = 0
     zero_pts = np.zeros(len(v2t))
-    mach = np.sqrt(gamma*(np.array(pt)/np.array(rhot)))
-    v2t_cs_array = v2t/mach
     # Selects every nth row
     LIM = [0, 10]
     v2t_cs = v2t_cs_array[LIM[0]::LIM[-1]].T
@@ -143,6 +148,7 @@ elif line_plot == T:
     zero_line = np.full((len(yt), len(gaps)), gaps)
 
     fig2, ax2 = plt.subplots(figsize=(18, 20))
+    fontsize = 16
 
     plt.plot(yt, v2t_cs+gaps)
     plt.plot(yt, zero_line, linestyle='--')
@@ -153,10 +159,16 @@ elif line_plot == T:
     labels[::4] = (str(-SPACER))
     labels[1::4] = ('0.0')
     labels[2::4] = (str(SPACER))
-    plt.yticks(gaps, labels)
-
-    plt.xlabel('y [Mm]')
-    plt.ylabel('v2/cs')
+    plt.yticks(gaps, labels, fontsize=fontsize)
+    plt.rc('xtick', labelsize=fontsize)
+    time_stamps = tick[LIM[0]::LIM[-1]]
+    text_pos_1 = np.full(len(v2t_cs.T), 9)
+    text_pos_2 = zero_line[0]+1
+    for i in range(len(text_pos_1)):
+        ax2.text(text_pos_1[i], text_pos_2[i],
+                 str(round(time_stamps[i], -1))+' s', fontsize=fontsize)
+    plt.xlabel('y [Mm]', fontsize=fontsize)
+    plt.ylabel('v2/cs', fontsize=fontsize)
     plt.xlim(0, 10)
 
 else:
