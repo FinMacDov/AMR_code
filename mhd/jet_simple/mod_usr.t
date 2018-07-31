@@ -53,7 +53,7 @@ contains
     !SRadius=69.61d0 ! Solar radius
     
     BB1=0.0d0/unit_magneticfield
-    BB2=50.0d0/unit_magneticfield
+    BB2=60.0d0/unit_magneticfield
     BB3=0.0d0/unit_magneticfield
 
     !=> To allow output to be in physical uints
@@ -155,15 +155,17 @@ contains
         write(*,*)'L =', unit_length, 'cm'
         write(*,*)'V =', unit_velocity, 'cm/s'
         write(*,*)'rho =', unit_numberdensity, 'g/cm3'
+        write(*,*)'rho =', unit_density, 'cm-3'
         write(*,*)'B =', unit_magneticfield, 'G'
         write(*,*)'T =', unit_temperature, 'K'
+        write(*,*)'p =', unit_pressure, 'dyn cm-2'
       endif
       first=.false.
     endif
     {do ix^DB=ixOmin^DB,ixOmax^DB\}
         na=floor((x(ix^D,2)-xprobmin2+gzone)/dya+0.5d0)
         res=x(ix^D,2)-xprobmin2+gzone-(dble(na)-0.5d0)*dya
-        w(ix^D,rho_)=ra(na)+(one-cos(dpi*res/dya))/two*(ra(na+1)-ra(na))
+        w(ix^D,rho_)= ra(na)+(one-cos(dpi*res/dya))/two*(ra(na+1)-ra(na))
         w(ix^D,p_)  =pa(na)+(one-cos(dpi*res/dya))/two*(pa(na+1)-pa(na))
     {end do\}
     w(ixO^S,mom(:))=zero
@@ -206,10 +208,11 @@ contains
     double precision, intent(inout) :: w(ixI^S,1:nw)
 
     double precision :: pth(ixI^S),tmp(ixI^S),ggrid(ixI^S),invT(ixI^S)
-    double precision :: delydelx
-    double precision ::jet_w, jet_h, A, switch, deltax, deltay
-    integer :: ind^D
+    double precision :: delydelx, j_origx, rho_j, deltax, deltay
+    double precision ::jet_w, jet_h, A, switch, delta_x, delta_y, phase, switch_off, endtime
+    integer :: ind^D, test
     integer :: ix^D,idir,ixInt^L
+    logical, save :: first=.true.
 
     select case(iB)
     case(3)
@@ -242,6 +245,67 @@ contains
         w(ixOmin1:ixOmax1,ix2,p_)=pbc(ix2)
       enddo
       !to drive jet
+      jet_w = 3.5d7/2.0d0/unit_length !< (350 km)/unit_length
+      A = 5.0d6/unit_velocity
+      delta_x = (jet_w)/3.d0 !< This defines the width of guass dist.
+                                   !< divided by 3 as guass dist = 0 
+                                   !< after 3 sigma. 
+      j_origx = (abs(xprobmax1)-abs(xprobmin1))/2.0d0
+      rho_j = 1.0d-9/unit_density
+      phase = 2.0d0*dpi/10.0d0
+!      phase = 2.0d0*dpi/(60.0d0/unit_time)
+      endtime = 240.0d0/unit_time
+      switch_off = endtime/2
+!     note qt has no dim
+     test = 2
+     if(test == 0) then
+!      call mhd_to_primitive(ixI^L,ixO^L,w,x)
+      do ind1=ixOmin1,ixOmax1
+        do ind2=ixOmin2,ixOmax2
+          if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w) then
+            w(ind^D,rho_) = rho_j 
+            if(mhd_n_tracer>0) then
+              w(ind^D,tracer(1))=100.0d0
+            endif
+              w(ind^D,mom(1))=zero
+              w(ind^D,mom(2))= A
+            else
+              w(ind^D,mom(2))=zero
+            endif
+        end do
+      end do
+      endif
+
+!     do ind1 = ixOmin1,ixOmax1
+!     print*, w(ind1,ixOmax2,mom(2))*unit_velocity, x(ind1,ixOmax2,1), qt*unit_time
+!     enddo
+
+     if(test==1) then
+      do ind1=ixOmin1,ixOmax1
+        do ind2=ixOmin2,ixOmax2
+          if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w .and. x(ind^D,2)<=jet_h) then
+            w(ind^D,rho_) = rho_j 
+            if(mhd_n_tracer>0) then
+              w(ind^D,tracer(1))=100.0d0
+            endif
+            if (qt >= switch_off) then
+              if (qt-endtime > 0.0d0) then
+              w(ind^D,mom(2))= 0.0d0
+              else  
+              w(ind^D,mom(2))= -A*dtanh(phase*(qt-endtime))*& 
+                               dexp(-((x(ind1,ind2,1)-j_origx)/delta_x)**2)  
+              endif
+              else
+                w(ind^D,mom(2))= A*dtanh(phase*qt)*&
+                               dexp(-((x(ind1,ind2,1)-j_origx)/delta_x)**2)
+            endif
+          endif
+        end do
+      end do
+      endif
+
+     if(test==2) then
+      !to drive jet
       jet_w = (xprobmax1-xprobmin1)/domain_nx1 !This makes the jet 1 cell radius 
       jet_h = (xprobmax2-xprobmin2)/domain_nx2
       A = 5.0d6/unit_velocity
@@ -251,6 +315,7 @@ contains
         do ind2=ixOmin2,ixOmax2
           if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w .and. x(ind^D,2)<=jet_h) then
             switch = 2.0d0*dpi*qt/10.0d0 ! will peak around 4.25 s
+           print*, x(ixOmin1,ind2,1), ind1, ind2, qt*unit_time, jet_w, x(ixOmax1,ind2,1), x(ind1,ind2,1)
             w(ind^D,mom(2))= A*dtanh(switch)*&
                              dexp(-(dabs(((x(ind1,ind2,1)-x(ixOmin1,ind2,1)/deltax)))**2&
                              +(dabs((x(ind1,ind2,2)-x(ind1,ixOmin2,2))/deltay))**2))  
@@ -261,19 +326,16 @@ contains
           end if
         end do
       end do
+      endif
 
-
-! doesnt work: Error: Inconsistent ranks for operator at (1) and (2)
-!      where(x(ixO^S,1)<=jet_w .and. x(ixO^S,1)>=-jet_w)
-!      w(ixO^S,mom(2))  = A
-!       w(ixO^S,mom(2))= A*dsin(2.0d0*dpi/qt)*&
-!                        dexp(-(((x(ixO^S,1)-x(ixOmin1,ixOmin2:ixOmax2,1)/deltax))**2& !(1)
-!                        +((x(ixO^S,2)-x(ixOmin1:ixOmax1,ixOmin2,2))/deltay)**2))      !(2)
-!      endwhere
 
       if(mhd_glm) w(ixO^S,psi_)=0.d0
-      call phys_to_conserved(ixI^L,ixO^L,w,x)
-    case(4)
+      call mhd_to_conserved(ixI^L,ixO^L,w,x)
+
+!     do ind1 = ixOmin1,ixOmax1
+!     print*, (w(ind1,ixOmax2,mom(2))*unit_velocity)/(rho_j), qt*unit_time
+!     enddo 
+   case(4)
       ixInt^L=ixO^L;
       ixIntmin2=ixOmin2-1;ixIntmax2=ixOmin2-1;
       call phys_get_pthermal(w,x,ixI^L,ixInt^L,pth)
@@ -442,18 +504,14 @@ contains
      kk=5.0d0
      kk0=0.01d0
      kk1=1.0d0
-     grhomax=1000!10.0d0
+     grhomax=1.d-8
+
+!     grhomax=MAXVAL(gradrho(ixO^S))
 
   ! putting the schlierplot of density in nwauxio=1
      w(ixO^S,nw+5)=dexp(-kk*(gradrho(ixO^S)-kk0*grhomax)/(kk1*grhomax-kk0*grhomax))
-
-    ! store current
-    call curlvector(Btotal*unit_magneticfield,ixI^L,ixO^L,curlvec,idirmin,1,ndir)
-    do idir=1,ndir
-      w(ixO^S,nw+6+idir)=curlvec(ixO^S,idir)
-    end do
    
-    w(ixO^S,nw+9)=unit_velocity*dsqrt(mhd_gamma*pth(ixO^S)/w(ixO^S,rho_))
+     w(ixO^S,nw+6)=unit_velocity*dsqrt(mhd_gamma*pth(ixO^S)/w(ixO^S,rho_))
 
   end subroutine specialvar_output
 
@@ -462,7 +520,7 @@ contains
     use mod_global_parameters
     character(len=*) :: varnames
 
-    varnames='Te Alfv divB beta schrho j1 j2 j3 cs'
+    varnames='Te Alfv divB beta schrho cs'
 
   end subroutine specialvarnames_output
 

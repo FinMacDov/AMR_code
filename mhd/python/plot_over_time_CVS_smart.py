@@ -35,8 +35,8 @@ vunit = 11645084.295622544
 timeunit = 2.14683
 
 # location = '/home/fionnlagh/work/dat/mhd/2d/c7_relax_run_csv'
-# location = '/media/fionnlagh/W7_backup/c7test/longrun'
-location = '/home/fionnlagh/sim_data/jet_simple/slice1'
+#location = '/home/fionnlagh/sim_data/jet_simple/slice1'
+location = '/media/fionnlagh/W7_backup/c7test/longrun'
 
 global file_path
 file_path = os.path.abspath(location)
