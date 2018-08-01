@@ -8,6 +8,36 @@ Plots guassian function used in simulations.
 """
 import numpy as np
 import matplotlib.pyplot as plt
+import math
+
+def erf(z):
+    t = 1.0 / (1.0 + 0.5 * abs(z))
+        # use Horner's method
+    ans = 1 - t * math.exp( -z*z -  1.26551223 + 
+          t * ( 1.00002368 + 
+          t * ( 0.37409196 + 
+          t * ( 0.09678418 + 
+          t * (-0.18628806 + 
+          t * ( 0.27886807 + 
+          t * (-1.13520398 + 
+          t * ( 1.48851587 + 
+          t * (-0.82215223 + 
+          t * ( 0.17087277))))))))))
+    if z >= 0.0:
+        return ans
+    else:
+        return -ans
+
+
+def theta(x):
+    theta = 0.5*(1.0+erf(x))
+    return theta
+
+T = True
+F = False
+
+skewed = T
+norm = F
 
 fontsize = 18
 linewidth = 5
@@ -29,9 +59,6 @@ xprobmax1 = 4.0
 x0 = (xprobmax1-abs(xprobmin1))/2
 deltax = jet_w/3.0  # @ Contians jet in guass dist as 3 sigma guass dist is zero.
 
-# create grid pts
-x = np.linspace(xprobmin1, xprobmax1, domain_nx1_max)
-
 # y information
 domain_nx2 = 20
 xprobmin2 = 0.0
@@ -40,16 +67,31 @@ y0 = 0.0  # (xprobmax2-xprobmin2)/2
 deltay = (xprobmax2-xprobmin2)/domain_nx2
 # create grid points
 y = np.linspace(xprobmin2, xprobmax2, domain_nx2)
+x = np.linspace(xprobmin1, xprobmax1, domain_nx1_max)
 
-dist_test_x = A*np.exp(-((x-x0)/deltax)**2)
-dist_test_y = A*np.exp(-((y-y0)/deltay)**2)
+if norm:
+    dist_test_x = A*np.exp(-((x-x0)/deltax)**2)
+    dist_test_y = A*np.exp(-((y-y0)/deltay)**2)
+#endif
 
-plt.xlim(-0.2,0.2)
-plt.rc('xtick', labelsize=fontsize)
-plt.rc('ytick', labelsize=fontsize)
-plt.xlabel('x [Mm]', fontsize=fontsize)
-plt.ylabel('Velocity [km s-1]', fontsize=fontsize)
-plt.scatter(jet_plot, np.zeros(len(jet_plot)),alpha=0.9, s=markersize, zorder=1, color='r')
-plt.plot(x, dist_test_x, linewidth=linewidth, zorder=-1)
-plt.grid()
-plt.show()
+if skewed:
+    alpha = -40.0
+    dist_test_x = np.exp(-((x-x0)/deltax)**2)
+    theta_dist = np.zeros(len(x))
+    for i in range(len(x)):
+        theta_dist[i] = theta(x[i]*alpha)
+    thi = (1/np.sqrt(2*np.pi))*dist_test_x
+    skewed_dis = 2*thi*theta_dist
+    dist_test_x = skewed_dis        
+#endif
+
+if skewed or norm:
+    plt.xlim(-0.2,0.2)
+    plt.rc('xtick', labelsize=fontsize)
+    plt.rc('ytick', labelsize=fontsize)
+    plt.xlabel('x [Mm]', fontsize=fontsize)
+    plt.ylabel('Velocity [km s-1]', fontsize=fontsize)
+    plt.scatter(jet_plot, np.zeros(len(jet_plot)),alpha=0.9, s=markersize, zorder=1, color='r')
+    plt.plot(x, dist_test_x, linewidth=linewidth, zorder=-1)
+    plt.grid()
+    plt.show()
