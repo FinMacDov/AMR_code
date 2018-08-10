@@ -1,39 +1,51 @@
 module mod_usr
   use mod_mhd
+  use mod_global_parameters, only: std_len
   implicit none
-  double precision, allocatable :: pbc(:),rbc(:)
-  double precision :: usr_grav
-  double precision :: heatunit,gzone,B0,theta,SRadius,kx,ly,bQ0,dya
+  double precision, allocatable :: pbc(:),rbc(:), pubc(:),rubc(:)
+  double precision :: usr_grav,heatunit,gzone,B0
+  double precision :: theta,SRadius,kx,ly,dya,BB1,BB2,BB3
   double precision, allocatable :: pa(:),ra(:),ya(:),Ha(:)
-  integer, parameter :: jmax=8000
 
-  double precision :: s0,s1,Bv,B_y,y_r,BB1,BB2,BB3
-  logical :: driver, tanh_profile, c7_profile, driver_kuz, driver_random, integrate, derivative, derivative_2
-  logical :: driver_injetion, driver_injetion_1, jet_cont, jet_switch
-  double precision :: randphase(10), randA(10), randP(10) 
-  integer :: nxmodes
+  double precision :: s0,s1,Bv,B_y,y_r
+  logical :: driver, tanh_profile, c7_profile, driver_kuz
+  logical :: driver_random, integrate, derivative, derivative_2 
+  logical :: driver_injetion, driver_injetion_1
+  logical ::  jet_cont, jet_switch_on_off, jet_test
+  double precision :: jet_time,amp,B_strength
+  double precision :: randphase(10), randA(10), randP(10)
+  integer :: nxmodes, npts
+  !> Name of temperture profile chosen 
+  character(len=std_len), private  :: Te_profile
 
 contains
+
   subroutine usr_init()
+    use mod_global_parameters
+    use mod_usr_methods
+
     call set_coordinate_system("Cartesian_2.5D")
 
-    unit_length= 1.d9  ! cm
-    unit_temperature = 1.d6  ! K
+    mhd_gamma=1.66666667d0
+    mhd_eta=zero ! This gives idea MHD
+
+    unit_length        = 1.d8  ! cm = 1 Mm
+    unit_temperature   = 1.d6  ! K
     unit_numberdensity = 1.d9  ! cm^-3
+
+!    unit_pressure = unit_temperature*unit_density
 
     usr_set_parameters  => initglobaldata_usr
     usr_init_one_grid   => initonegrid_usr
     usr_special_bc      => specialbound_usr
-    usr_source          => special_source
     usr_gravity         => gravity
     usr_refine_grid     => special_refine_grid
     usr_set_B0          => specialset_B0
     usr_aux_output      => specialvar_output
-    usr_add_aux_names   => specialvarnames_output
-    !>aaded
+    !=> added
     usr_add_aux_names   => specialvarnames_output
     usr_var_for_errest  => Te_for_errest
- 
+
     call mhd_activate()
     call params_read(par_files)
   end subroutine usr_init
@@ -44,52 +56,44 @@ contains
   character(len=*), intent(in) :: files(:)
   integer                      :: n
 
-  namelist /my_switches/ driver, driver_kuz, driver_random, tanh_profile, c7_profile, integrate,derivative, derivative_2, driver_injetion, driver_injetion_1, jet_cont, jet_switch
+  namelist /my_switches/ driver,driver_kuz,driver_random,tanh_profile,c7_profile,integrate,derivative,derivative_2,driver_injetion,driver_injetion_1, jet_cont,jet_switch_on_off,jet_test /atmos_list/ npts,Te_profile, /my_parameters/ amp,B_strength,jet_time  
   do n = 1, size(files)
    open(unitpar, file=trim(files(n)), status="old")
        read(unitpar, my_switches, end=111)
 111    close(unitpar)
-    end do
+        open(unitpar, file=trim(files(n)), status="old")
+        read(unitpar, atmos_list, end=112)
+112     close(unitpar)
+        open(unitpar, file=trim(files(n)), status="old")
+        read(unitpar, my_parameters, end=113)
+113     close(unitpar)
+      end do
   end subroutine params_read
 
-!> Can base AMR on Te
-  subroutine Te_for_errest(ixI^L,ixO^L,iflag,w,x,var)
-    use mod_global_parameters
-    integer, intent(in)           :: ixI^L,ixO^L,iflag
-    double precision, intent(in)  :: w(ixI^S,1:nw),x(ixI^S,1:ndim)
-    double precision, intent(out) :: var(ixI^S)
-    double precision :: pth(ixI^S)
-
-    call mhd_get_pthermal(w,x,ixI^L,ixO^L,pth)
-    var(ixO^S) = pth(ixO^S)/w(ixO^S,rho_)
-  end subroutine Te_for_errest
-
   subroutine initglobaldata_usr()
+    use mod_global_parameters
     integer :: iv
     integer,dimension(:),allocatable:: seed
     integer::  seed_size,ix
     real:: randphaseP1(1:10), randA1(1:10), randP1(1:10)
-
-    heatunit=unit_pressure/unit_time          ! 3.697693390805347E-003 erg*cm^-3/s
-
+ 
+    heatunit=unit_pressure/unit_time          
     usr_grav=-2.74d4*unit_length/unit_velocity**2 ! solar gravity
-    bQ0=1.d-4/heatunit ! background heating power density
     gzone=0.2d0 ! thickness of a ghostzone below the bottom boundary
-    dya=(2.d0*gzone+xprobmax2-xprobmin2)/dble(jmax) ! cells size of high-resolution 1D solar atmosphere
+    dya=(2.d0*gzone+xprobmax2-xprobmin2)/dble(npts) ! cells size of high-resolution 1D solar atmosphere
     B0=Busr/unit_magneticfield ! magnetic field strength at the bottom
-    theta=60.d0*dpi/180.d0 ! the angle to the plane xy, 90-theta is the angle to the polarity inversion line of the arcade 
-!    kx=dpi/(xprobmax1-xprobmin1)
-    kx=dpi/((xprobmax1-xprobmin1)/2.0d0)-0.5d0
+    theta=60.d0*dpi/180.d0 ! the angle to the plane xy, 90-theta is the angle to the polarity inversion line of the arcade
+    kx=dpi/((xprobmax1-xprobmin1)/2.0d0)
     ly=kx*dcos(theta)
-!    SRadius=6.96d10/unit_length ! Solar radius
-    SRadius=69.61d0 ! Solar radius
-
+    SRadius=6.96d10/unit_length ! Solar radius
+    !SRadius=69.61d0 ! Solar radius
+    
     !=> in Guass
     BB1=0.0d0/unit_magneticfield
-    BB2=60.0d0/unit_magneticfield
+    BB2=B_strength/unit_magneticfield
     BB3=0.0d0/unit_magneticfield
-
-    !=>Konkol et al. 2012 and Kuzma et al. 2017
+    
+    !=>Konkol et al. (2012) and Kuzma et al. (2017)
     !=>s1 = s and s0 = a ("a" is not sound speed)
     B_y = 8.0d0/unit_magneticfield
     y_r = 1.0d9/unit_length
@@ -97,7 +101,21 @@ contains
     s0  = -1.5d8/unit_length 
     s1  =  (Bv-B_y)*(y_r-s0)**2!<= see own notes
     !<= s1 fixes the value of |B| = 8G @ (0,y_r)     
+    
+    !=> To allow output to be in physical uints
+    length_convert_factor = unit_length
+    time_convert_factor = unit_time
+    w_convert_factor(1) = unit_density
+    w_convert_factor(5) = unit_pressure
 
+    do iv = 2,4
+      w_convert_factor(iv) = unit_velocity
+      w_convert_factor(iv+4) = unit_magneticfield
+    enddo 
+
+    !=> hydrostatic vertical stratification of density, temperature, pressure
+    call inithdstatic
+    
     !=> input for random drivers
     if(driver_random)then
     nxmodes=10
@@ -123,6 +141,7 @@ contains
          call MPI_BCAST(randA,10,MPI_DOUBLE_PRECISION,0,icomm,ierrmpi)
          call MPI_BCAST(randP,10,MPI_DOUBLE_PRECISION,0,icomm,ierrmpi)
     endif
+
     if(mype==0)then
 !      print *,'number of modes=',nxmodes
       open(123,file='phaseinfo',form='formatted')
@@ -134,44 +153,30 @@ contains
     endif
     endif
 
-! Should leave this alone if posssible
-   !=> To allow output to be in physical uints
-    length_convert_factor = unit_length
-    time_convert_factor = unit_time
-    w_convert_factor(1) = unit_density
-    w_convert_factor(5) = unit_pressure
-
-    do iv = 2,4
-      w_convert_factor(iv) = unit_velocity
-      w_convert_factor(iv+4) = unit_magneticfield
-    enddo 
-
-   ! hydrostatic vertical stratification of density, temperature, pressure
-    call inithdstatic
   end subroutine initglobaldata_usr
 
   subroutine inithdstatic
-!    use mod_global_parameters
   !! initialize the table in a vertical line through the global domain
-    integer :: j,na,nb,ibc
+    use mod_global_parameters
+    use mod_solar_atmosphere
+
+    integer :: j,na,ibc, i, k
     double precision, allocatable :: Ta(:),gg(:)
     double precision:: rpho,Ttop,Tpho,wtra,res,rhob,pb,htra,Ttr,Fc,invT,kappa
-  
-    rpho=1.151d15/unit_numberdensity ! number density at the bottom relaxla
+    rpho=1.151d15/unit_numberdensity ! number density at the bottom
     Tpho=8.d3/unit_temperature ! temperature of chromosphere
     Ttop=1.5d6/unit_temperature ! estimated temperature in the top
-    htra=0.2d0 ! height of initial transition region
-    wtra=0.02d0 ! width of initial transition region 
+    htra=2.0d0! height of initial transition region
+    wtra=0.02d0! width of initial transition region
     Ttr=1.6d5/unit_temperature ! lowest temperature of upper profile
     Fc=2.d5/heatunit/unit_length ! constant thermal conduction flux
     kappa=8.d-7*unit_temperature**3.5d0/unit_length/unit_density/unit_velocity**3
- 
-    allocate(ya(jmax),Ta(jmax),gg(jmax),pa(jmax),ra(jmax),Ha(jmax))
-   !Setting up atmospheric profiles
+
+    allocate(ya(npts),Ta(npts),gg(npts),pa(npts),ra(npts),Ha(npts))
    !=> set up of tanh profile
    if(tanh_profile) then    
     !=> creates temperture profile
-    do j=1,jmax
+    do j=1,npts
        ya(j)=(dble(j)-0.5d0)*dya-gzone
       !<=remove for steeper T profile 
       if(ya(j)>htra) then
@@ -185,13 +190,26 @@ contains
     ra(1)=rpho
     pa(1)=rpho*Tpho
     invT=gg(1)/Ta(1) !<1/H(y)
-    invT=0.d0
    endif
 
-   ! methods for constructing 1D profiles
+ !=> set up of c7 profile
+   if(c7_profile) then   
+    call solar_atmosphere_init(mhd_gamma,He_abundance)
+    do i=1,npts  
+     Ta(i) = Te_intrpl(i)
+     gg(i)=usr_grav*(SRadius/(SRadius+z_pos(i)))**2
+    end do 
+
+    ra(1) = n_e_ini(1) !number density in cgs units
+    dya = abs(z_pos(2)-z_pos(1)) ! Cells size for C7 data
+    pa(1)=ra(1)*Ta(1)
+    invT=gg(1)/Ta(1) !<1/H(y)
+   endif
+
+   !=> methods
    if(integrate) then
    !=>scale height for HS equation
-    do j=2,jmax
+    do j=2,npts
        invT=invT+(gg(j)/Ta(j)+gg(j-1)/Ta(j-1))*0.5d0
        pa(j)=pa(1)*dexp(invT*dya)
        ra(j)=pa(j)/Ta(j)
@@ -209,9 +227,9 @@ contains
       rbc(ibc)=ra(na)+res/dya*(ra(na+1)-ra(na))
       pbc(ibc)=pa(na)+res/dya*(pa(na+1)-pa(na))
     end do
-    endif
+
    if(derivative)then
-    do j=2,jmax
+    do j=2,npts
       pa(j)=(pa(j-1)+dya*(gg(j)+gg(j-1))*ra(j-1)/4.d0)/(one-dya*(gg(j)+gg(j-1))/Ta(j)/4.d0)
       ra(j)=pa(j)/Ta(j)
     end do
@@ -231,7 +249,7 @@ contains
    endif
 
    if(derivative_2)then
-    do j=2,jmax
+    do j=2,npts
       pa(j)=ra(j)*Ta(j)
     end do
     na=floor(gzone/dya+0.5d0)
@@ -252,19 +270,26 @@ contains
      print*,'minra',minval(ra)
      print*,'rhob',rhob
      print*,'pb',pb
-    endif
+    endif 
+   endif
 
   end subroutine inithdstatic
 
   subroutine initonegrid_usr(ixI^L,ixO^L,w,x)
     ! initialize one grid
+    use mod_global_parameters
+    use mod_physics
+
     integer, intent(in) :: ixI^L,ixO^L
     double precision, intent(in) :: x(ixI^S,1:ndim)
     double precision, intent(inout) :: w(ixI^S,1:nw)
 
-    double precision :: res
-    integer :: ix^D,na
+    double precision :: res,delta_y
+    integer :: ix^D,na,i
     logical, save :: first=.true.
+    double precision :: width, A, y0,x0
+    double precision:: gradp(ixG^T),dp(ixG^T)
+    integer         :: idims
 
     if(first)then
       if(mype==0) then
@@ -273,55 +298,139 @@ contains
         write(*,*)'T =', unit_time, 's'
         write(*,*)'L =', unit_length, 'cm'
         write(*,*)'V =', unit_velocity, 'cm s-1'
-        write(*,*)'rho =', unit_numberdensity, 'cm-3'
+        write(*,*)'ne =', unit_numberdensity, 'cm-3'
         write(*,*)'rho =', unit_density, 'g cm-3'
         write(*,*)'B =', unit_magneticfield, 'G'
         write(*,*)'T =', unit_temperature, 'K'
         write(*,*)'p =', unit_pressure, 'dyn cm-2'
-
         if(tanh_profile) write(*,*)'tanh atmos =', tanh_profile
         if(c7_profile) write(*,*)'C7 atmos =', c7_profile
         if(driver) write(*,*)'driver Fedun=', driver
         if(driver_random) write(*,*)'driver random =', driver_random
-        if(driver_kuz) write(*,*)'driver Kuzma =', driver_kuz
-        if(driver_injetion) write(*,*)'jet driver 1  =', driver_injetion
-        if(driver_injetion_1) write(*,*)'jet driver 2  =', driver_injetion_1
-        if(jet_cont) write(*,*)'jet_cont =',jet_cont 
-        if(jet_switch) write(*,*) 'jet_switch =', jet_switch
+        if(driver_kuz) write(*,*)'driver Kuzma=', driver_kuz
+        if(jet_test) write(*,*) 'For testing jet', jet_test
+        if(jet_cont) write(*,*) 'jet continous', jet_cont
+        if(jet_switch_on_off) write(*,*) 'jet switch on/off', jet_switch_on_off
       endif
       first=.false.
     endif
+      
+    if(.NOT.firstprocess)then
+     {do ix^DB=ixImin^DB,ixImax^DB\}
+       na=floor((x(ix^D,2)-xprobmin2+gzone)/dya+0.5d0)
+       res=x(ix^D,2)-xprobmin2+gzone-(dble(na)-0.5d0)*dya
+       w(ix^D,rho_)=ra(na)+(one-cos(dpi*res/dya))/2.0d0*(ra(na+1)-ra(na))
+       w(ix^D,p_)=pa(na)+(one-cos(dpi*res/dya))/2.0d0*(pa(na+1)-pa(na))
+     {end do\}
 
-    {do ix^DB=ixOmin^DB,ixOmax^DB\}
-        na=floor((x(ix^D,2)-xprobmin2+gzone)/dya+0.5d0)
-        res=x(ix^D,2)-xprobmin2+gzone-(dble(na)-0.5d0)*dya
-        w(ix^D,rho_)=ra(na)+(one-cos(dpi*res/dya))/two*(ra(na+1)-ra(na))
-        w(ix^D,p_)  =pa(na)+(one-cos(dpi*res/dya))/two*(pa(na+1)-pa(na))
-    {end do\}
-    w(ixO^S,mom(:))=zero
-    if(B0field) then
+   if(derivative_2)then
+     do ix1=ixImin1,ixImax1
+      do ix2=ixImax2-1,ixImin2, -1
+       delta_y = -abs(x(ix1,ix2+1,2)-x(ix^D,2))!*1.0d8
+       w(ix^D,p_) = w(ix1,ix2+1,p_)+w(ix1,ix2,rho_)*delta_y*(usr_grav*(SRadius/(SRadius+x(ix^D,2)))**2) 
+     enddo
+     enddo    
+
+!     gradp(ixO^S)=zero
+!     do idims=1,ndim
+!       select case(typegrad)
+!       case("central")
+!         call gradient(w(ixI^S,p_),ixI^L,ixO^L,idims,dp)
+!       case("limited")
+!         call gradientS(w(ixI^S,p_),ixI^L,ixO^L,idims,dp)
+!       end select
+!       gradp(ixO^S)=gradp(ixO^S)+dp(ixO^S)**2.0d0
+!     enddo
+!     gradp(ixO^S)=dsqrt(gradp(ixO^S))
+
+!     w(ixI^S,rho_)=-(1.0d0/(usr_grav*(SRadius/(SRadius+x(ixI^S,2)))**2))*gradp(ixI^S)
+    endif
+
+    endif
+
+    if(B0field .or. iprob==0) then
       w(ixO^S,mag(:))=zero
     else
+    select case(iprob)
+      case(1,11)
+      w(ixO^S,mag(1))=BB1
+      w(ixO^S,mag(2))=BB2
+      w(ixO^S,mag(3))=BB3
+      case(2,12)
+      !origninal setup
       w(ixO^S,mag(1))=-B0*dcos(kx*x(ixO^S,1))*dexp(-ly*x(ixO^S,2))*dcos(theta)
       w(ixO^S,mag(2))= B0*dsin(kx*x(ixO^S,1))*dexp(-ly*x(ixO^S,2))
       w(ixO^S,mag(3))=-B0*dcos(kx*x(ixO^S,1))*dexp(-ly*x(ixO^S,2))*dsin(theta)
+      case(3,13)
+      !=>Konkol et al. 2012 and Kuzma et al. 2017
+      !=>s1 = s and s0 = a ("a" is not sound speed)
+      w(ixO^S,mag(1))= -2.0d0*s1*x(ixO^S,1)*(x(ixO^S,2)-s0)/&
+                       (x(ixO^S,1)**2+(x(ixO^S,2)-s0)**2)**2
+      w(ixO^S,mag(2))= s1*(x(ixO^S,1)**2-(x(ixO^S,2)-s0)**2)/&
+                       (x(ixO^S,1)**2+(x(ixO^S,2)-s0)**2)**2+Bv
+      w(ixO^S,mag(3))=0.0d0     
+     case default
+        call mpistop('iprob to implement')
+    endselect
     endif
+ 
+    if(firstprocess)then
+       w(ixO^S,e_) = w(ixO^S,e_)+(sum(w(ixO^S,mag(:))**2,dim=ndim+1)/2.0d0)
+       call  mhd_to_primitive(ixI^L,ixO^L,w,x)
+       w(ixO^S,mom(1))=zero
+       w(ixO^S,mom(2))=zero 
+       w(ixO^S,mom(3))=zero
+    endif  
+
+      if(driver_kuz)then
+      width = 0.1 !Mm
+      A = 2e5/unit_velocity !<=2 km/s
+      x0 = (xprobmax1-abs(xprobmin1))/2.0d0+0.0d0!<=x origin
+      y0 =0.7d0 !<=y origin
+      w(ixI^S,mom(2))= A*dexp(-((x(ixI^S,1)-x0)**2+(x(ixI^S,2)-y0)**2)/&
+      width**2)
+      endif
+
+   ! Set tracer
+    if(mhd_n_tracer>0) then
+        w(ixO^S,tracer(1))=1.0d0
+    end if
 
     if(mhd_glm) w(ixO^S,psi_)=0.d0
 
-    call mhd_to_conserved(ixI^L,ixO^L,w,x)
-
+    call phys_to_conserved(ixI^L,ixO^L,w,x)
   end subroutine initonegrid_usr
+
+  subroutine Te_for_errest(ixI^L,ixO^L,iflag,w,x,var)
+    use mod_global_parameters
+    integer, intent(in)           :: ixI^L,ixO^L,iflag
+    double precision, intent(in)  :: w(ixI^S,1:nw),x(ixI^S,1:ndim)
+    double precision, intent(out) :: var(ixI^S)
+    double precision :: pth(ixI^S)
+
+    call mhd_get_pthermal(w,x,ixI^L,ixO^L,pth)
+    var(ixO^S) = pth(ixO^S)/w(ixO^S,rho_)
+  end subroutine Te_for_errest
 
   subroutine specialbound_usr(qt,ixI^L,ixO^L,iB,w,x)
     ! special boundary types, user defined
+    use mod_global_parameters
+    use mod_physics
+
     integer, intent(in) :: ixO^L, iB, ixI^L
     double precision, intent(in) :: qt, x(ixI^S,1:ndim)
     double precision, intent(inout) :: w(ixI^S,1:nw)
-
+    double precision :: v_sum
     double precision :: pth(ixI^S),tmp(ixI^S),ggrid(ixI^S),invT(ixI^S)
-    double precision :: delydelx
-    integer :: ix^D,idir,ixInt^L
+    double precision :: pth_low(ixI^S),tmp_low(ixI^S),ggrid_low(ixI^S),invT_low(ixI^S)
+    double precision :: delydelx, x0, y0, width
+    double precision :: jet_w, jet_h, A, period, deltax, deltay
+    double precision :: switch, phase, switch_off, endtime, rho_j, j_origx
+    integer :: ind^D, na, i
+    integer :: ix^D,idir,ixInt^L, ixInt_low^L
+    integer :: nb_pts
+    double precision :: rand_driv(10)
+
 
     select case(iB)
     case(3)
@@ -330,27 +439,242 @@ contains
         w(ixO^S,mom(idir)) =-w(ixOmin1:ixOmax1,ixOmax2+nghostcells:ixOmax2+1:-1,mom(idir))&
                    /w(ixOmin1:ixOmax1,ixOmax2+nghostcells:ixOmax2+1:-1,rho_)
       end do
+
       !! fixed b1 b2 b3
       if(iprob==0 .or. B0field) then
         w(ixO^S,mag(:))=0.d0
       else
-        w(ixO^S,mag(1))=-B0*dcos(kx*x(ixO^S,1))*dexp(-ly*x(ixO^S,2))*dcos(theta)
-        w(ixO^S,mag(2))= B0*dsin(kx*x(ixO^S,1))*dexp(-ly*x(ixO^S,2))
-        w(ixO^S,mag(3))=-B0*dcos(kx*x(ixO^S,1))*dexp(-ly*x(ixO^S,2))*dsin(theta)
+        select case(iprob)
+          case(1,11)
+          w(ixO^S,mag(1))=BB1
+          w(ixO^S,mag(2))=BB2
+          w(ixO^S,mag(3))=BB3
+          case(2,12)
+          !origninal setup
+          w(ixO^S,mag(1))=-B0*dcos(kx*x(ixO^S,1))*dexp(-ly*x(ixO^S,2))*dcos(theta)
+          w(ixO^S,mag(2))= B0*dsin(kx*x(ixO^S,1))*dexp(-ly*x(ixO^S,2))
+          w(ixO^S,mag(3))=-B0*dcos(kx*x(ixO^S,1))*dexp(-ly*x(ixO^S,2))*dsin(theta)
+          case(3,13)
+          !=>Konkol et al. 2012 and Kuzma et al. 2017
+          !=>s1 = s and s0 = a ("a" is not sound speed)
+          w(ixO^S,mag(1))= -2.0d0*s1*x(ixO^S,1)*(x(ixO^S,2)-s0)/&
+                       (x(ixO^S,1)**2+(x(ixO^S,2)-s0)**2)**2
+          w(ixO^S,mag(2))= s1*(x(ixO^S,1)**2-(x(ixO^S,2)-s0)**2)/&
+                       (x(ixO^S,1)**2+(x(ixO^S,2)-s0)**2)**2+Bv
+          w(ixO^S,mag(3))=0.0d0     
+         case default
+            call mpistop('iprob to implement')
+        endselect
       endif
+
+!    if(firstprocess)then
       !! fixed gravity stratification of density and pressure pre-determined in initial condition
       do ix2=ixOmin2,ixOmax2
         w(ixOmin1:ixOmax1,ix2,rho_)=rbc(ix2)
         w(ixOmin1:ixOmax1,ix2,p_)=pbc(ix2)
       enddo
+!    endif
+
+!    if(.NOT.firstprocess)then
+!      ixInt_low^L=ixO^L;
+!      ixInt_lowmin2=ixOmax2+1;ixInt_lowmax2=ixOmax2+1;
+!      call mhd_get_pthermal(w,x,ixI^L,ixInt_low^L,pth_low)
+!      ixInt_lowmin2=ixOmin2;ixInt_lowmax2=ixOmax2+1;
+!      call getggrav(ggrid_low,ixI^L,ixInt_low^L,x)
+!      !> fill pth, rho ghost layers according to gravity stratification
+!      invT_low(ixOmax2+1^%2ixO^S)=w(ixOmax2+1^%2ixO^S,rho_)/pth_low(ixOmax2+1^%2ixO^S) 
+!      tmp_low=0.d0
+!      do ix2=ixOmax2,ixOmin2,-1
+!        tmp_low(ixOmax2+1^%2ixO^S)=tmp_low(ixOmax2+1^%2ixO^S)+0.5d0*&
+!            (ggrid_low(ix2^%2ixO^S)+ggrid_low(ix2+1^%2ixO^S))*invT_low(ixOmax2+1^%2ixO^S)
+!        w(ix2^%2ixO^S,p_)=pth_low(ixOmax2+1^%2ixO^S)*dexp(-tmp_low(ixOmax2+1^%2ixO^S)*dxlevel(2))
+!        w(ix2^%2ixO^S,rho_)=w(ix2^%2ixO^S,p_)*invT_low(ixOmax2+1^%2ixO^S)
+!      enddo
+!    endif
+
+      !=> List of different drivers
+      !=> Fedun et al 
+      if(driver) then 
+      jet_w = (xprobmax1-xprobmin1)/domain_nx1 !<= 1 cell radius 
+      jet_h = (xprobmax2-xprobmin2)/domain_nx2
+      A = 5.0d4/unit_velocity !500 m/s !5.0d6/unit_velocity!
+      deltax = (xprobmax1-xprobmin1)/domain_nx1
+      deltay = (xprobmax2-xprobmin2)/domain_nx2
+      x0 =(xprobmax1-abs(xprobmin1))/2.0d0+0.0d0 !<=x origin
+      y0 =-gzone !<=y origin
+      period = 30.0d0/unit_time
+        w(ixO^S,mom(2))= A*dsin(2.0d0*dpi*qt/period)*&
+                         dexp(-(((x(ixO^S,1)-x0)/deltax)**2&
+                         +((x(ixO^S,2)-y0)/deltay)**2))
+      endif
+
+     !> guassian driver for continous jet
+     if(jet_test) then
+      !to drive jet
+      jet_w = 3.5d7/2.0d0/unit_length !< (350 km)/unit_length
+      A = amp*1.0d5/unit_velocity
+      deltax = (jet_w)/3.d0 !< This defines the width of guass dist.
+                                   !< divided by 3 as guass dist = 0 
+                                   !< after 3 sigma. 
+      j_origx = (abs(xprobmax1)-abs(xprobmin1))/2.0d0
+      rho_j = 1.0d-9/unit_density
+      phase = 2.0d0*dpi/10.0d0
+      do ind1=ixOmin1,ixOmax1
+        do ind2=ixOmin2,ixOmax2
+          if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w) then
+            w(ind^D,rho_) = rho_j 
+            if(mhd_n_tracer>0) then
+              w(ind^D,tracer(1))=100.0d0
+            endif
+              w(ind^D,mom(1))=zero
+              w(ind^D,mom(2))= A
+            else
+              w(ind^D,mom(2))=zero
+            endif
+        end do
+      end do
+      endif
+
+     if(jet_cont) then
+      !to drive jet
+      jet_w = 3.5d7/2.0d0/unit_length !< (350 km)/unit_length
+      A = amp*1.0d5/unit_velocity
+      deltax = (jet_w)/3.d0 !< This defines the width of guass dist.
+                                   !< divided by 3 as guass dist = 0 
+                                   !< after 3 sigma. 
+      j_origx = (abs(xprobmax1)-abs(xprobmin1))/2.0d0
+      rho_j = 1.0d-9/unit_density
+      phase = 2.0d0*dpi/(jet_time/unit_time)
+      do ind1=ixOmin1,ixOmax1
+        do ind2=ixOmin2,ixOmax2
+          if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w) then
+            w(ind^D,rho_) = rho_j 
+            if(mhd_n_tracer>0) then
+              w(ind^D,tracer(1))=100.0d0
+            endif
+              w(ind^D,mom(1))=zero
+                w(ind^D,mom(2))= A*dtanh(phase*qt)*&
+                               dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
+            else
+              w(ind^D,mom(2))=zero
+            endif
+        end do
+      end do
+      endif
+
+     !> gassian driver for jet with switch on and off condition
+     if(jet_switch_on_off) then
+      !to drive jet
+      jet_w = 3.5d7/2.0d0/unit_length !< (350 km)/unit_length
+      A = amp*1.0d5/unit_velocity
+      deltax = (jet_w)/3.d0 !< This defines the width of guass dist.
+                                   !< divided by 3 as guass dist = 0 
+                                   !< after 3 sigma. 
+      j_origx = (abs(xprobmax1)-abs(xprobmin1))/2.0d0
+      rho_j = 1.0d-9/unit_density
+      endtime = jet_time/unit_time
+!      phase = 2.0d0*dpi/10.0d0
+      phase = 2.0d0*dpi/endtime
+      switch_off = endtime/2
+      do ind1=ixOmin1,ixOmax1
+        do ind2=ixOmin2,ixOmax2
+          if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w .and. x(ind^D,2)<=jet_h) then
+            w(ind^D,rho_) = rho_j 
+            if(mhd_n_tracer>0) then
+              w(ind^D,tracer(1))=100.0d0
+            endif
+            if (qt >= switch_off) then
+              if (qt-endtime > 0.0d0) then
+              w(ind^D,mom(2))= 0.0d0
+              else  
+              w(ind^D,mom(2))= -A*dtanh(phase*(qt-endtime))*& 
+                               dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)  
+              endif
+              else
+                w(ind^D,mom(2))= A*dtanh(phase*qt)*&
+                               dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
+            endif
+          endif
+        end do
+      end do
+      endif      
+
+
+
+      if(driver_injetion) then 
+       jet_w = (xprobmax1-xprobmin1)/domain_nx1 !<= 1 cell radius 
+       jet_h = 0.0d0!2.0d0*(xprobmax2-xprobmin2)/domain_nx2
+       A = 1.0d6/unit_velocity!5.0d4/unit_velocity !500 m/s !
+       deltax = (xprobmax1-xprobmin1)/domain_nx1
+       deltay = (xprobmax2-xprobmin2)/domain_nx2
+       x0 =(xprobmax1-abs(xprobmin1))/2.0d0+0.0d0 !<=x origin
+       y0 =-gzone !<=y origin
+       period = 10.0d0/unit_time
+        where(dabs(x(ixO^S,1))<jet_w.and.x(ixO^S,2)<jet_h)
+         w(ixO^S,rho_)=rbc(1)
+!         w(ixO^S,e_)=pa(1000)
+         w(ixO^S,mom(1))=zero
+!         w(ixO^S,mom(2))=A*dexp(-dabs(x(ixO^S,1)))
+         w(ixO^S,mom(2))  = A*tanh(2.0d0*dpi*qt/period)*&
+                          dexp(-(((x(ix^D,1)-x0)/deltax)))
+!         w(ixO^S,mom(2))  = A*tanh(2.0d0*dpi*qt/period)*&
+!                          dexp(-(((x(ix^D,1)-x0)/deltax)**2&
+!                          +((x(ix^D,2)-y0)/deltay)**2))
+!       if(mhd_n_tracer>0) then
+!        w(ind^D,tracer(1))=100.0d0
+!       endif
+       end where
+      endif
+
+      if(driver_injetion_1) then 
+      jet_w = (xprobmax1-xprobmin1)/domain_nx1 !This makes the jet 1 cell radius 
+      jet_h = (xprobmax2-xprobmin2)/domain_nx2
+      A = 6.0d6/unit_velocity
+      deltax = (xprobmax1-xprobmin1)/domain_nx1
+      deltay = (xprobmax2-xprobmin2)/domain_nx2
+       do ind1=ixOmin1,ixOmax1
+        do ind2=ixOmin2,ixOmax2
+!         if(mhd_n_tracer>0) then
+!           w(ind^D,tracer(1))=0.0d0
+!         endif
+          if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w .and. x(ind^D,2)<=jet_h) then
+!            switch = 2.0d0*dpi*qt/10.0d0 ! will peak around 4.25 mins
+            w(ind^D,mom(2))= A*dtanh(2.0d0*dpi*qt/10.0d0)*&
+                             dexp(-(dabs(((x(ind1,ind2,1)-x(ixOmin1,ind2,1)/deltax)))**2&
+                             +(dabs((x(ind1,ind2,2)-x(ind1,ixOmin2,2))/deltay))**2))  
+            w(ind^D,rho_) = 1.0d-9/unit_density 
+            if(mhd_n_tracer>0) then
+              w(ind^D,tracer(1))=200.0d0
+            endif
+          end if
+        end do
+      end do
+     endif
+
+
+      if(driver_random)then
+      deltax = (xprobmax1-xprobmin1)/domain_nx1
+      deltay = (xprobmax2-xprobmin2)/domain_nx2
+      x0 =(xprobmax1-abs(xprobmin1))/2.0d0+0.0d0 !<=x origin
+      y0 =-gzone !<=y origin
+      do i = 1,10
+         rand_driv(i) = randA(i)*sin(2*dpi*qt/randP(i)+randphase(i)) 
+!         write(*,*)i,mype,rand_driv(i),randA(i),randP(i),randphase(i) 
+      enddo
+
+        w(ixO^S,mom(2))= sum(rand_driv)*&
+                         dexp(-(((x(ixO^S,1)-x0)/deltax)**2&
+                         +((x(ixO^S,2)-y0)/deltay)**2))
+      endif
+      
       if(mhd_glm) w(ixO^S,psi_)=0.d0
       call mhd_to_conserved(ixI^L,ixO^L,w,x)
     case(4)
       ixInt^L=ixO^L;
       ixIntmin2=ixOmin2-1;ixIntmax2=ixOmin2-1;
-      call mhd_get_pthermal(w,x,ixI^L,ixInt^L,pth)
+      call mhd_get_pthermal(w,x,ixI^L,ixInt^L,pth) !< Calculates the Te in layer below ghostcells
       ixIntmin2=ixOmin2-1;ixIntmax2=ixOmax2;
-      call getggrav(ggrid,ixI^L,ixInt^L,x)
+      call getggrav(ggrid,ixI^L,ixInt^L,x) 
       !> fill pth, rho ghost layers according to gravity stratification
       invT(ixOmin2-1^%2ixO^S)=w(ixOmin2-1^%2ixO^S,rho_)/pth(ixOmin2-1^%2ixO^S)
       tmp=0.d0
@@ -360,6 +684,7 @@ contains
         w(ix2^%2ixO^S,p_)=pth(ixOmin2-1^%2ixO^S)*dexp(tmp(ixOmin2-1^%2ixO^S)*dxlevel(2))
         w(ix2^%2ixO^S,rho_)=w(ix2^%2ixO^S,p_)*invT(ixOmin2-1^%2ixO^S)
       enddo
+
       !> fixed zero velocity
       do idir=1,ndir
         w(ixO^S,mom(idir)) =-w(ixOmin1:ixOmax1,ixOmin2-1:ixOmin2-nghostcells:-1,mom(idir))&
@@ -372,7 +697,7 @@ contains
                +4.0d0*w(ixOmin1:ixOmax1,ix2-1,mag(:)))
       enddo
       if(mhd_glm) w(ixO^S,psi_)=0.d0
-      call mhd_to_conserved(ixI^L,ixO^L,w,x)
+      call phys_to_conserved(ixI^L,ixO^L,w,x)
     case default
        call mpistop("Special boundary is not defined for this region")
     end select
@@ -380,6 +705,7 @@ contains
   end subroutine specialbound_usr
 
   subroutine gravity(ixI^L,ixO^L,wCT,x,gravity_field)
+    use mod_global_parameters
     integer, intent(in)             :: ixI^L, ixO^L
     double precision, intent(in)    :: x(ixI^S,1:ndim)
     double precision, intent(in)    :: wCT(ixI^S,1:nw)
@@ -394,6 +720,7 @@ contains
   end subroutine gravity
 
   subroutine getggrav(ggrid,ixI^L,ixO^L,x)
+    use mod_global_parameters
     integer, intent(in)             :: ixI^L, ixO^L
     double precision, intent(in)    :: x(ixI^S,1:ndim)
     double precision, intent(out)   :: ggrid(ixI^S)
@@ -401,34 +728,11 @@ contains
     ggrid(ixO^S)=usr_grav*(SRadius/(SRadius+x(ixO^S,2)))**2
   end subroutine
 
-  subroutine special_source(qdt,ixI^L,ixO^L,iw^LIM,qtC,wCT,qt,w,x)
-    integer, intent(in) :: ixI^L, ixO^L, iw^LIM
-    double precision, intent(in) :: qdt, qtC, qt
-    double precision, intent(in) :: x(ixI^S,1:ndim), wCT(ixI^S,1:nw)
-    double precision, intent(inout) :: w(ixI^S,1:nw)
-
-    double precision :: lQgrid(ixI^S),bQgrid(ixI^S)
-
-    ! add global background heating bQ
-    call getbQ(bQgrid,ixI^L,ixO^L,qtC,wCT,x)
-    w(ixO^S,e_)=w(ixO^S,e_)+qdt*bQgrid(ixO^S)
-
-  end subroutine special_source
-
-  subroutine getbQ(bQgrid,ixI^L,ixO^L,qt,w,x)
-  ! calculate background heating bQ
-    integer, intent(in) :: ixI^L, ixO^L
-    double precision, intent(in) :: qt, x(ixI^S,1:ndim), w(ixI^S,1:nw)
-
-    double precision :: bQgrid(ixI^S)
-
-    bQgrid(ixO^S)=bQ0*dexp(-x(ixO^S,2)/5.d0)
-
-  end subroutine getbQ
-
   subroutine special_refine_grid(igrid,level,ixI^L,ixO^L,qt,w,x,refine,coarsen)
   ! Enforce additional refinement or coarsening
   ! One can use the coordinate info in x and/or time qt=t_n and w(t_n) values w.
+    use mod_global_parameters
+
     integer, intent(in) :: igrid, level, ixI^L, ixO^L
     double precision, intent(in) :: qt, w(ixI^S,1:nw), x(ixI^S,1:ndim)
     integer, intent(inout) :: refine, coarsen
@@ -447,7 +751,8 @@ contains
   ! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
   ! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
   ! corresponding normalization values (default value 1)
-    use mod_radiative_cooling
+    use mod_global_parameters
+
     integer, intent(in)                :: ixI^L,ixO^L
     double precision, intent(in)       :: x(ixI^S,1:ndim)
     double precision                   :: w(ixI^S,nw+nwauxio)
@@ -458,10 +763,16 @@ contains
     double precision :: Btotal(ixI^S,1:ndir),curlvec(ixI^S,1:ndir)
     integer :: idirmin,idir,ix^D
 
+    double precision:: gradrho(ixG^T),rho(ixG^T),drho(ixG^T)
+    double precision:: gradp(ixG^T),dp(ixG^T), ggrid(ixI^S), p(ixG^T)
+    double precision:: kk,kk0,grhomax,kk1
+    integer         :: idims
+    logical, save   :: firstrun=.true.
+    ! output temperature
     wlocal(ixI^S,1:nw)=w(ixI^S,1:nw)
     ! output temperature
     call mhd_get_pthermal(wlocal,x,ixI^L,ixO^L,pth)
-    w(ixO^S,nw+1)=pth(ixO^S)/w(ixO^S,rho_)
+    w(ixO^S,nw+1)=pth(ixO^S)/w(ixO^S,rho_)*unit_temperature
 
     do idir=1,ndir
       if(B0field) then
@@ -474,45 +785,85 @@ contains
     B2(ixO^S)=sum((Btotal(ixO^S,:))**2,dim=ndim+1)
 
     ! output Alfven wave speed B/sqrt(rho)
-    w(ixO^S,nw+2)=dsqrt(B2(ixO^S)/w(ixO^S,rho_))
+    w(ixO^S,nw+2)=unit_velocity*dsqrt(B2(ixO^S)/w(ixO^S,rho_))
 
     ! output divB1
     call get_normalized_divb(wlocal,ixI^L,ixO^L,divb)
     w(ixO^S,nw+3)=divb(ixO^S)
+
     ! output the plasma beta p*2/B**2
     w(ixO^S,nw+4)=pth(ixO^S)*two/B2(ixO^S)
-    ! output heating rate
-    call getbQ(ens,ixI^L,ixO^L,global_time,wlocal,x)
-    w(ixO^S,nw+5)=ens(ixO^S)
-    ! store the cooling rate 
-    if(mhd_radiative_cooling)call getvar_cooling(ixI^L,ixO^L,wlocal,x,ens)
-    w(ixO^S,nw+6)=ens(ixO^S)
 
-    ! store current
-    call get_current(wlocal,ixI^L,ixO^L,idirmin,curlvec)
-    do idir=1,ndir
-      w(ixO^S,nw+6+idir)=curlvec(ixO^S,idir)
-    end do
-  
+     rho(ixI^S)=w(ixI^S,rho_)
+     gradrho(ixO^S)=zero
+     do idims=1,ndim
+       select case(typegrad)
+       case("central")
+         call gradient(rho*unit_density,ixI^L,ixO^L,idims,drho)
+       case("limited")
+         call gradientS(rho*unit_density,ixI^L,ixO^L,idims,drho)
+       end select
+       gradrho(ixO^S)=gradrho(ixO^S)+drho(ixO^S)**2.0d0
+     enddo
+
+     gradrho(ixO^S)=dsqrt(gradrho(ixO^S))
+     kk=5.0d0
+     kk0=0.01d0
+     kk1=1.0d0
+     grhomax=1.d-8
+
+!     grhomax=MAXVAL(gradrho(ixO^S))
+
+  ! putting the schlierplot of density in nwauxio=1
+     w(ixO^S,nw+5)=dexp(-kk*(gradrho(ixO^S)-kk0*grhomax)/(kk1*grhomax-kk0*grhomax))
+   
+     w(ixO^S,nw+6)=unit_velocity*dsqrt(mhd_gamma*pth(ixO^S)/w(ixO^S,rho_))
+
   end subroutine specialvar_output
 
   subroutine specialvarnames_output(varnames)
   ! newly added variables need to be concatenated with the w_names/primnames string
+    use mod_global_parameters
     character(len=*) :: varnames
-    varnames='Te Alfv divB beta bQ rad j1 j2 j3'
+
+!    varnames='Te Alfv divB beta schrho j1 j2 j3 cs fb'
+    varnames='Te Alfv divB beta schrho cs'
 
   end subroutine specialvarnames_output
 
   subroutine specialset_B0(ixI^L,ixO^L,x,wB0)
-  ! Here add a steady (time-independent) potential or 
+  ! Here add a steady (time-independent) potential or
   ! linear force-free background field
+    use mod_global_parameters
+
     integer, intent(in)           :: ixI^L,ixO^L
     double precision, intent(in)  :: x(ixI^S,1:ndim)
     double precision, intent(inout) :: wB0(ixI^S,1:ndir)
 
-    wB0(ixO^S,1)=-B0*dcos(kx*x(ixO^S,1))*dexp(-ly*x(ixO^S,2))*dcos(theta)
-    wB0(ixO^S,2)=+B0*dsin(kx*x(ixO^S,1))*dexp(-ly*x(ixO^S,2))
-    wB0(ixO^S,3)=-B0*dcos(kx*x(ixO^S,1))*dexp(-ly*x(ixO^S,2))*dsin(theta)
+
+    select case(iprob)
+      case(1,11)
+      wB0(ixO^S,1)=BB1
+      wB0(ixO^S,2)=BB2
+      wB0(ixO^S,3)=BB3
+      case(2,12)
+      !origninal setup
+      wB0(ixO^S,1)=-B0*dcos(kx*x(ixO^S,1))*dexp(-ly*x(ixO^S,2))*dcos(theta)
+      wB0(ixO^S,2)=+B0*dsin(kx*x(ixO^S,1))*dexp(-ly*x(ixO^S,2))
+      wB0(ixO^S,3)=-B0*dcos(kx*x(ixO^S,1))*dexp(-ly*x(ixO^S,2))*dsin(theta)
+      case(3,13)
+      !=>Konkol et al. 2012 and Kuzma et al. 2017
+      !=>s1 = s and s0 = a ("a" is not sound speed)
+      wB0(ixO^S,1)=-2.0d0*s1*x(ixO^S,1)*(x(ixO^S,2)-s0)/&
+                       (x(ixO^S,1)**2+(x(ixO^S,2)-s0)**2)**2
+      wB0(ixO^S,2)=s1*(x(ixO^S,1)**2-(x(ixO^S,2)-s0)**2)/&
+                       (x(ixO^S,1)**2+(x(ixO^S,2)-s0)**2)**2+Bv
+      wB0(ixO^S,3)=0.0d0
+     
+     case default
+        call mpistop('iprob to implement')
+    endselect
+
 
   end subroutine specialset_B0
 
