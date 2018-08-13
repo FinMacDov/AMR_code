@@ -559,11 +559,13 @@ contains
               if(tilt_pc>0.0d0) then 
                 w(ind^D,mom(1))=(tilt_pc)*A*dtanh(phase*qt)*&
                                dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
+                w(ind^D,mom(2))= (1.0d0-tilt_pc)*A*dtanh(phase*qt)*&
+                                 dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
               else
                 w(ind^D,mom(1))=0.0d0
+                w(ind^D,mom(2))= A*dtanh(phase*qt)*&
+                                 dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
               endif
-              w(ind^D,mom(2))= A*dtanh(phase*qt)*&
-                               dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
             else
               w(ind^D,mom(2))=zero
             endif
