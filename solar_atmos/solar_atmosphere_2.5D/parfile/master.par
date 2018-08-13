@@ -105,7 +105,7 @@
   B_strength = 60.0d0 !G 
   jet_time = 240.0d0 !s
   alpha_val = 80.0d0 
-  jet_tilt = 0.0d0!
+  tilt_pc = 0.0d0!
 /
 
  &my_switches

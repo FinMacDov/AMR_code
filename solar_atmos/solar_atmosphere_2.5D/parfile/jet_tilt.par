@@ -8,7 +8,7 @@
 !==============================================================
 
  &filelist
-        base_filename='./jet_tilt/B_60_v_50_tilt_1pc_'
+        base_filename='./jet_tilt/tilt_test_'
         saveprim=.T.
         autoconvert=.T.
         convert_type='vtuBCCmpi'
@@ -60,7 +60,7 @@
  /
 
  &meshlist
-        refine_max_level=4
+        refine_max_level=3
         refine_criterion=3
         refine_threshold=20*0.2d0
         derefine_ratio=20*0.15d0
@@ -106,6 +106,7 @@
   B_strength = 60.0d0 !G 
   jet_time = 240.0d0 !s
   alpha_val = 80.0d0 
+  tilt_pc =  0.0d0 ! must be < 1. To switch off < 0 
 /
 
  &my_switches
