@@ -1,0 +1,118 @@
+!==============================================================
+! Project : 2.5D MHD solar atmosphere in bipolar magnetic field
+! Aim     : serve as a basic model for solar applications
+! Results :
+! Update  : 10/02/2017
+! configuration :
+! $AMRVAC_DIR/setup.pl -d=2
+!==============================================================
+
+ &filelist
+        base_filename='./test_data/c7_relax_lr_'
+        saveprim=.T.
+        autoconvert=.T.
+        convert_type='vtuBCCmpi'
+        slice_type='csv'
+        nwauxio=1
+        firstprocess=.F.  
+        snapshotnext=0
+        slicenext=0
+ /
+
+ &savelist
+        itsave(1,1)=0
+        itsave(1,2)=0
+        dtsave_log=40.0d0
+        dtsave_dat=20.0d0!=> adding slice output
+        dtsave(3)=40.0d0 !<= slice output saved
+        nslices=1        !<= number of slices
+        slicedir(1)=1    !<= data is taken perp to dim select i.e
+                         !<= in this case x is chosen and thus we
+                         !<= take data from y axis.
+        slicecoord(1)=0.0!<= pt of origin of slice. 
+ /
+
+ &stoplist
+        dtmin=1.D-12
+        time_max= 3.6e5 !=100hrs !1.44d5 = 40hrs
+/
+
+
+ &methodlist
+        time_integrator='threestep' 
+        flux_scheme=20*'hlld'
+        limiter= 20*'cada3'
+        typegrad = 'limited'
+!        small_values_method='error'
+!        small_pressure=1.0d-14
+!        small_density=1.0d-14
+/
+
+ &boundlist
+        nghostcells=2
+        typeboundary_min1 = 8*'periodic'
+        typeboundary_max1 = 8*'periodic'
+        typeboundary_min2 = 8*'special'!'cont'!'special'
+        typeboundary_max2 = 8*'special'!'cont'!'special'
+/
+
+ &meshlist
+        refine_max_level=1
+        refine_criterion=3
+        w_refine_weight(1)=0.4d0
+        w_refine_weight(6)=0.2d0
+        w_refine_weight(7)=0.2d0
+        w_refine_weight(8)=0.2d0
+        block_nx1=4
+        block_nx2=4
+        domain_nx1=12
+        domain_nx2=600
+        iprob=0
+        xprobmin1=-0.5d0
+        xprobmax1=0.5d0
+        xprobmin2=0.0d0
+        xprobmax2=10.0d0
+ /
+
+ &paramlist
+        slowsteps=10
+        typecourant='maxsum'
+        courantpar=0.8d0
+ /
+
+ &mhd_list
+        mhd_thermal_conduction=.F.
+        mhd_radiative_cooling=.F.
+        mhd_gravity=.T.
+        He_abundance=0.d0
+        typedivbfix='powel'
+        Busr=20.d0 
+        B0field=.F.
+        boundary_divbfix(3)=.F.
+ /
+
+ &atmos_list
+     Te_profile ='C7'  
+     npts = 8000   
+ /
+
+
+ &my_switches
+    ! Temperture profiles
+    tanh_profile= .T.
+    c7_profile = .F.
+    ! fill grid
+    integrate = .T.
+    derivative = .F.
+    derivative_2 = .F.
+    ! Choice of driver
+    driver= .F.
+    driver_random = .F.
+    driver_kuz = .F.
+    driver_injetion = .F.
+    jet_cont = .F.
+    jet_switch_on_off = .F.
+!    units_si = .T.
+!    units_cgs = .F.
+/
+
