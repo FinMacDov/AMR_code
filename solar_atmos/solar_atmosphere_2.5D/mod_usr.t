@@ -10,9 +10,9 @@ module mod_usr
   double precision :: s0,s1,Bv,B_y,y_r
   logical :: driver, tanh_profile, c7_profile, driver_kuz
   logical :: driver_random, integrate, derivative, derivative_2 
-  logical :: driver_injetion, driver_injetion_1
+  logical :: driver_injetion, driver_injetion_1, jet_skewed_guass
   logical ::  jet_cont, jet_switch_on_off, jet_test
-  double precision :: jet_time,amp,B_strength
+  double precision :: jet_time,amp,B_strength,alpha_val,tilt_pc
   double precision :: randphase(10), randA(10), randP(10)
   integer :: nxmodes, npts
   !> Name of temperture profile chosen 
@@ -56,7 +56,7 @@ contains
   character(len=*), intent(in) :: files(:)
   integer                      :: n
 
-  namelist /my_switches/ driver,driver_kuz,driver_random,tanh_profile,c7_profile,integrate,derivative,derivative_2,driver_injetion,driver_injetion_1, jet_cont,jet_switch_on_off,jet_test /atmos_list/ npts,Te_profile, /my_parameters/ amp,B_strength,jet_time  
+  namelist /my_switches/ driver,driver_kuz,driver_random,tanh_profile,c7_profile,integrate,derivative,derivative_2,driver_injetion,driver_injetion_1, jet_cont,jet_switch_on_off,jet_test,jet_skewed_guass, /atmos_list/ npts,Te_profile, /my_parameters/ amp,B_strength,jet_time,alpha_val,tilt_pc  
   do n = 1, size(files)
    open(unitpar, file=trim(files(n)), status="old")
        read(unitpar, my_switches, end=111)
@@ -311,6 +311,7 @@ contains
         if(jet_test) write(*,*) 'For testing jet', jet_test
         if(jet_cont) write(*,*) 'jet continous', jet_cont
         if(jet_switch_on_off) write(*,*) 'jet switch on/off', jet_switch_on_off
+        if(jet_skewed_guass) write(*,*) 'jet driven with skewed guass', jet_skewed_guass
       endif
       first=.false.
     endif
@@ -416,6 +417,7 @@ contains
     ! special boundary types, user defined
     use mod_global_parameters
     use mod_physics
+    use mod_skewed_Gaussian
 
     integer, intent(in) :: ixO^L, iB, ixI^L
     double precision, intent(in) :: qt, x(ixI^S,1:ndim)
@@ -430,6 +432,8 @@ contains
     integer :: ix^D,idir,ixInt^L, ixInt_low^L
     integer :: nb_pts
     double precision :: rand_driv(10)
+    double precision :: skewed_guass_dist, alpha
+
 
 
     select case(iB)
@@ -552,8 +556,13 @@ contains
             if(mhd_n_tracer>0) then
               w(ind^D,tracer(1))=100.0d0
             endif
-              w(ind^D,mom(1))=zero
-                w(ind^D,mom(2))= A*dtanh(phase*qt)*&
+              if(tilt_pc>0.0d0) then 
+                w(ind^D,mom(1))=(tilt_pc)*A*dtanh(phase*qt)*&
+                               dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
+              else
+                w(ind^D,mom(1))=0.0d0
+              endif
+              w(ind^D,mom(2))= A*dtanh(phase*qt)*&
                                dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
             else
               w(ind^D,mom(2))=zero
@@ -599,6 +608,35 @@ contains
       end do
       endif      
 
+     if(jet_skewed_guass) then
+      !to drive jet
+      jet_w = 3.5d7/2.0d0/unit_length !< (350 km)/unit_length
+      A = amp*1.0d5/unit_velocity
+      deltax = (jet_w)/3.d0 !< This defines the width of guass dist.
+                                   !< divided by 3 as guass dist = 0 
+                                   !< after 3 sigma. 
+      j_origx = (abs(xprobmax1)-abs(xprobmin1))/2.0d0
+      rho_j = 1.0d-9/unit_density
+      phase = 2.0d0*dpi/(jet_time/unit_time)
+      alpha = alpha_val
+      x0 =(xprobmax1-abs(xprobmin1))/2.0d0+0.0d0 !<=x origin
+      do ind1=ixOmin1,ixOmax1
+        do ind2=ixOmin2,ixOmax2
+          if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w) then
+            w(ind^D,rho_) = rho_j 
+            if(mhd_n_tracer>0) then
+              w(ind^D,tracer(1))=100.0d0
+            endif
+              call skewd_Gaussian(skewed_guass_dist,alpha,x0,x(ind1,ind2,1),deltax)  
+              w(ind^D,mom(1))=zero
+               w(ind^D,mom(2))= A*dtanh(phase*qt)*skewed_guass_dist
+                                 
+            else
+              w(ind^D,mom(2))=zero
+            endif
+        end do
+      end do
+      endif
 
 
       if(driver_injetion) then 
