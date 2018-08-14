@@ -67,7 +67,7 @@ atmos_list = {'Te_profile=': "'C7'",
               'npts=': '8000'}
 my_parameters = {'amp =': '50.0d0 !km s-1',
                  'B_strength =': '60.0d0 !G',
-                 'jet_time =': '240.0d0 !s',
+                 'jet_time =': '300.0d0 !s',
                  'alpha_val =': '0.0d0',
                  'tilt_pc =': '0.0d0'}
 my_switches = {'tanh_profile=': '.T.',
@@ -102,9 +102,12 @@ for bi in range(len(B)):
         if os.path.isdir('B'+B[bi]+'/V'+V[vi]+'/') is False:
             os.makedirs('B'+B[bi]+'/V'+V[vi]+'/')
         file = open('B'+B[bi]+'/V'+V[vi]+'/B'+B[bi]+'_V'+V[vi]+'.par', 'w')
+        template['&filelist']['base_filename='] = "'jet_B"+B[bi]+"_V"+V[vi]+"'"
+        template['&my_parameters']['B_strength ='] = B[bi]+'.0d0  !G'
+        template['&my_parameters']['amp ='] = V[vi]+'.0d0  !km s-1'
         for i in template:
             file.write(str(i)+"\n")
             for j in template[i]:
                 file.write(str(j)+str(template[i][j])+"\n")
-                file.write('/ \n \n')
+            file.write('/ \n \n')
         file.close()
