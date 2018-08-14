@@ -94,16 +94,17 @@ template = {'&filelist': filelist,
             '&my_parameters': my_parameters,
             '&my_switches': my_switches}
 
-if os.path.isdir("folder/subfolder/") is False:
-    os.makedirs('folder/subfolder/')
-#B = ['30.0d0','40.0d0']
-#v = ['30.0d0','40.0d0']
+B = ['30', '40']
+V = ['30', '40']
 
-file = open('hello.txt', 'w')
-for i in template:
-    file.write(str(i)+"\n")
-    for j in template[i]:
-        file.write(str(j)+str(template[i][j])+"\n")
-    file.write('/ \n \n')
-
-file.close()
+for bi in range(len(B)):
+    for vi in range(len(V)):
+        if os.path.isdir('B'+B[bi]+'/V'+V[vi]+'/') is False:
+            os.makedirs('B'+B[bi]+'/V'+V[vi]+'/')
+        file = open('B'+B[bi]+'/V'+V[vi]+'/B'+B[bi]+'_V'+V[vi]+'.par', 'w')
+        for i in template:
+            file.write(str(i)+"\n")
+            for j in template[i]:
+                file.write(str(j)+str(template[i][j])+"\n")
+                file.write('/ \n \n')
+        file.close()
