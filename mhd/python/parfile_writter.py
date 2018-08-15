@@ -8,6 +8,7 @@ import os
 path = "/home/fionnlagh/work/AMR_code/mhd/python"
 os.chdir(path)
 
+# create parfile info
 filelist = {'base_filename=': "'test'",
             'saveprim=': '.T.',
             'autoconvert=': '.T.',
@@ -94,15 +95,36 @@ template = {'&filelist': filelist,
             '&my_parameters': my_parameters,
             '&my_switches': my_switches}
 
+# corosponding submitters.
+run_time = '10:00:00'
+nb_cores = '24'
+rmem = '2G'
+email = 'fmackenziedover1@sheffield.ac.uk'
+
+# Input of changing vaibles.
 B = ['30', '40']
 V = ['30', '40']
+save_path = 'folder/'
 
 for bi in range(len(B)):
     for vi in range(len(V)):
         if os.path.isdir('B'+B[bi]+'/V'+V[vi]+'/') is False:
             os.makedirs('B'+B[bi]+'/V'+V[vi]+'/')
+
+        if os.path.isdir(save_path+'/jet_B'+B[bi]+'_V'+V[vi]) is False:
+            os.makedirs(save_path+'/jet_B'+B[bi]+'_V'+V[vi])
+
         file = open('B'+B[bi]+'/V'+V[vi]+'/B'+B[bi]+'_V'+V[vi]+'.par', 'w')
-        template['&filelist']['base_filename='] = "'jet_B"+B[bi]+"_V"+V[vi]+"'"
+        # create submitters
+        file_sub = open('B'+B[bi]+'/V'+V[vi]+'/sub_B'+B[bi]+'_V'+V[vi], 'w')
+        file_sub.write('#!/bin/bash \n#$ -l h_rt=' + run_time+'\n' +
+                       '#$ -pe openmpi-ib ' + nb_cores + '\n#$ -l rmem= '
+                       + rmem +'\n#$ -m bea' + '\n#$ -M ' + email + '\n#$ -j y'
+                       + '\n\nmodule load mpi/openmpi/2.1.1/gcc-6.2' 
+                       +'\n\nmpirun ./amrvac -i '+'B'+B[bi]+'/V'+V[vi]+'/B'
+                       +B[bi]+'_V'+V[vi]+'.par')
+
+        template['&filelist']['base_filename='] = "'"+save_path+'B'+B[bi]+'/V'+V[vi]+'/jet_B'+B[bi]+'_V'+V[vi]+"'"
         template['&my_parameters']['B_strength ='] = B[bi]+'.0d0  !G'
         template['&my_parameters']['amp ='] = V[vi]+'.0d0  !km s-1'
         for i in template:
