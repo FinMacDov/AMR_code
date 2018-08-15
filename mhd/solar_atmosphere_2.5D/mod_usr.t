@@ -19,10 +19,11 @@ contains
     unit_temperature   = 1.d6                                         ! K
     unit_numberdensity = 1.d9                                         ! cm^-3
 
+
     usr_set_parameters  => initglobaldata_usr
     usr_init_one_grid   => initonegrid_usr
     usr_special_bc      => specialbound_usr
-    usr_source          => special_source
+!    usr_source          => special_source
     usr_gravity         => gravity
     usr_refine_grid     => special_refine_grid
     usr_set_B0          => specialset_B0
@@ -34,6 +35,7 @@ contains
 
   subroutine initglobaldata_usr()
     use mod_global_parameters
+    integer :: i
 
     heatunit=unit_pressure/unit_time          ! 3.697693390805347E-003 erg*cm^-3/s
 
@@ -46,7 +48,18 @@ contains
     kx=dpi/(xprobmax1-xprobmin1)
     ly=kx*dcos(theta)
     SRadius=69.61d0 ! Solar radius
-    ! hydrostatic vertical stratification of density, temperature, pressure
+!    ! To allow output to be in physical uints
+!    length_convert_factor = unit_length
+!    time_convert_factor = unit_time
+!    w_convert_factor(1) = unit_density
+!    w_convert_factor(5) = unit_pressure
+
+!    ! hydrostatic vertical stratification of density, temperature, pressure
+!    do i = 2,4
+!      w_convert_factor(i) = unit_velocity
+!      w_convert_factor(i+4) = unit_magneticfield
+!    enddo 
+    
     call inithdstatic
 
   end subroutine initglobaldata_usr
@@ -126,6 +139,15 @@ contains
     if(first)then
       if(mype==0) then
         write(*,*)'Simulating 2.5D solar atmosphere'
+        write(*,*)'dimensionless vars:'
+        write(*,*)'T =', unit_time, 's'
+        write(*,*)'L =', unit_length, 'cm'
+        write(*,*)'V =', unit_velocity, 'cm s-1'
+        write(*,*)'rho =', unit_numberdensity, 'g cm-3'
+        write(*,*)'rho =', unit_density, 'g cm-3'
+        write(*,*)'B =', unit_magneticfield, 'G'
+        write(*,*)'T =', unit_temperature, 'K'
+        write(*,*)'p =', unit_pressure, 'dyn cm-2'
       endif
       first=.false.
     endif
@@ -295,7 +317,7 @@ contains
   ! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
   ! corresponding normalization values (default value 1)
     use mod_global_parameters
-    use mod_radiative_cooling
+!    use mod_radiative_cooling
 
     integer, intent(in)                :: ixI^L,ixO^L
     double precision, intent(in)       :: x(ixI^S,1:ndim)
@@ -305,12 +327,17 @@ contains
     double precision :: pth(ixI^S),B2(ixI^S),tmp2(ixI^S),dRdT(ixI^S)
     double precision :: ens(ixI^S),divb(ixI^S),wlocal(ixI^S,1:nw)
     double precision :: Btotal(ixI^S,1:ndir),curlvec(ixI^S,1:ndir)
-    integer :: idirmin,idir,ix^D
+    integer :: idirmin,idir,ix^D,idims
+    double precision:: gradp(ixG^T),dp(ixG^T), ggrid(ixI^S)
 
     wlocal(ixI^S,1:nw)=w(ixI^S,1:nw)
     ! output temperature
     call mhd_get_pthermal(wlocal,x,ixI^L,ixO^L,pth)
-    w(ixO^S,nw+1)=pth(ixO^S)/w(ixO^S,rho_)
+    if(SI_unit)then
+     w(ixO^S,nw+1)=(mp_SI/kB_SI)*pth(ixO^S)/w(ixO^S,rho_)*unit_temperature
+    else
+     w(ixO^S,nw+1)=pth(ixO^S)/w(ixO^S,rho_)*unit_temperature
+    endif 
 
     do idir=1,ndir
       if(B0field) then
@@ -323,26 +350,41 @@ contains
     B2(ixO^S)=sum((Btotal(ixO^S,:))**2,dim=ndim+1)
 
     ! output Alfven wave speed B/sqrt(rho)
-    w(ixO^S,nw+2)=dsqrt(B2(ixO^S)/w(ixO^S,rho_))
+    w(ixO^S,nw+2)=dsqrt(B2(ixO^S)/w(ixO^S,rho_))*unit_velocity
 
     ! output divB1
     call get_normalized_divb(wlocal,ixI^L,ixO^L,divb)
     w(ixO^S,nw+3)=divb(ixO^S)
     ! output the plasma beta p*2/B**2
     w(ixO^S,nw+4)=pth(ixO^S)*two/B2(ixO^S)
-    ! output heating rate
-    call getbQ(ens,ixI^L,ixO^L,global_time,wlocal,x)
-    w(ixO^S,nw+5)=ens(ixO^S)
-    ! store the cooling rate 
-    if(mhd_radiative_cooling)call getvar_cooling(ixI^L,ixO^L,wlocal,x,ens)
-    w(ixO^S,nw+6)=ens(ixO^S)
+!    ! output heating rate
+!    call getbQ(ens,ixI^L,ixO^L,global_time,wlocal,x)
+!    w(ixO^S,nw+5)=ens(ixO^S)*heatunit !! units need double checking
+!    ! store the cooling rate 
+!    if(mhd_radiative_cooling)call getvar_cooling(ixI^L,ixO^L,wlocal,x,ens)
 
-    ! store current
-    call get_current(wlocal,ixI^L,ixO^L,idirmin,curlvec)
-    do idir=1,ndir
-      w(ixO^S,nw+6+idir)=curlvec(ixO^S,idir)
-    end do
+!    ! store current
+!    call get_current(wlocal,ixI^L,ixO^L,idirmin,curlvec)
+!    do idir=1,ndir
+!      w(ixO^S,nw+6+idir)=curlvec(ixO^S,idir)
+!    end do
   
+    gradp(ixO^S)=zero
+    do idims=1,ndim
+      select case(typegrad)
+      case("central")
+        call gradient(pth,ixI^L,ixO^L,idims,dp)
+      case("limited")
+        call gradientS(pth,ixI^L,ixO^L,idims,dp)
+      end select
+      gradp(ixO^S)=gradp(ixO^S)+dp(ixO^S)**2.0d0
+    enddo
+    gradp(ixO^S)=dsqrt(gradp(ixO^S))
+   
+   call getggrav(ggrid,ixI^L,ixO^L,x)
+
+   w(ixO^S,nw+5)=gradp(ixO^S)-w(ixO^S,rho_)*ggrid(ixO^S)
+
   end subroutine specialvar_output
 
   subroutine specialvarnames_output(varnames)
@@ -350,7 +392,7 @@ contains
     use mod_global_parameters
     character(len=*) :: varnames
 
-    varnames='Te Alfv divB beta bQ rad j1 j2 j3'
+    varnames='Te Alfv divB beta fb'
 
   end subroutine specialvarnames_output
 
