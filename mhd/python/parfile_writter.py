@@ -5,7 +5,7 @@ Created on Mon Aug 13 16:36:22 2018
 @author: fionnlagh
 """
 import os
-path = "/home/fionnlagh/work/AMR_code/mhd/python"
+path = "/home/smp16fm/work/AMR_code/solar_atmos/solar_atmosphere_2.5D/sharc_parfiles"
 os.chdir(path)
 
 # create parfile info
@@ -102,10 +102,14 @@ rmem = '2G'
 email = 'fmackenziedover1@sheffield.ac.uk'
 
 # Input of changing vaibles.
-B = ['30', '40']
-V = ['30', '40']
-save_path = 'folder/'
+B = ['30', '40', '50', '60', '70', '80']
+V = ['30', '40', '50', '60']
+save_path = '/shared/mhd_jet1/User/smp16fm/sims/jet/'
+qsub_run_path = 'sharc_parfiles/'
+excute_path = '/home/smp16fm/work/AMR_code/solar_atmos/solar_atmosphere_2.5D/amrvac'
 
+file_bash = open('multi_qsub', 'w')
+file_bash.write('#!/bin/bash\n')
 for bi in range(len(B)):
     for vi in range(len(V)):
         if os.path.isdir('B'+B[bi]+'/V'+V[vi]+'/') is False:
@@ -118,13 +122,13 @@ for bi in range(len(B)):
         # create submitters
         file_sub = open('B'+B[bi]+'/V'+V[vi]+'/sub_B'+B[bi]+'_V'+V[vi], 'w')
         file_sub.write('#!/bin/bash \n#$ -l h_rt=' + run_time+'\n' +
-                       '#$ -pe openmpi-ib ' + nb_cores + '\n#$ -l rmem= '
+                       '#$ -pe mpi ' + nb_cores + '\n#$ -l rmem='
                        + rmem +'\n#$ -m bea' + '\n#$ -M ' + email + '\n#$ -j y'
                        + '\n\nmodule load mpi/openmpi/2.1.1/gcc-6.2' 
-                       +'\n\nmpirun ./amrvac -i '+'B'+B[bi]+'/V'+V[vi]+'/B'
-                       +B[bi]+'_V'+V[vi]+'.par')
-
-        template['&filelist']['base_filename='] = "'"+save_path+'B'+B[bi]+'/V'+V[vi]+'/jet_B'+B[bi]+'_V'+V[vi]+"'"
+                       +'\n\nmpirun -np ' +nb_cores+' '+excute_path+' -i '+qsub_run_path+'B'+B[bi]+'/V'+V[vi]+'/B'+B[bi]+'_V'+V[vi]+'.par')
+        file_bash.write('qsub sharc_parfiles/B'+B[bi]+'/V'+V[vi]+'/sub_B'+B[bi]+'_V'+V[vi]+' &\n')
+        #creates file path
+        template['&filelist']['base_filename='] = "'"+save_path+'jet_B'+B[bi]+'_V'+V[vi]+'/jet_B'+B[bi]+'_V'+V[vi]+"_'"
         template['&my_parameters']['B_strength ='] = B[bi]+'.0d0  !G'
         template['&my_parameters']['amp ='] = V[vi]+'.0d0  !km s-1'
         for i in template:
@@ -133,3 +137,4 @@ for bi in range(len(B)):
                 file.write(str(j)+str(template[i][j])+"\n")
             file.write('/ \n \n')
         file.close()
+file_bash.close()
