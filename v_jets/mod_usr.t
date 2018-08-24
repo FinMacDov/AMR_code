@@ -86,6 +86,8 @@ contains
        w(ixImin1:ixImax1,ix2,e_)   = w(ixImin1:ixImax1,ixImax2+1,e_) 
        w(ixImin1:ixImax1,ix2,mom(1))  = w(ixImin1:ixImax1,ixImax2+1,mom(1))
        w(ixImin1:ixImax1,ix2,mom(2))  = w(ixImin1:ixImax1,ixImax2+1,mom(2))
+       w(ixImin1:ixImax1,ix2,mag(1))  = w(ixImin1:ixImax1,ixImax2+1,mag(1))
+       w(ixImin1:ixImax1,ix2,mag(2))  = w(ixImin1:ixImax1,ixImax2+1,mag(2))
     end do
     where(dabs(x(ixI^S,1))<0.05d0)
        w(ixI^S,rho_)=rhoj
@@ -95,8 +97,6 @@ contains
        w(ixI^S,mag(1))=0.0d0
        w(ixI^S,mag(2))=B_strength
     else where
-       w(ixI^S,mag(1))=0.0d0
-       w(ixI^S,mag(2))=B_strength
        ! Reflective:
        !   w(ixI^S,rho_) = w(ixImin1:ixImax1,ixImax2+nghostcells:ixImax2+1:-1,rho_) 
        !   w(ixI^S,e_) = w(ixImin1:ixImax1,ixImax2+nghostcells:ixImax2+1:-1,e_) 
