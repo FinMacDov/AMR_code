@@ -2,7 +2,7 @@ module mod_usr
   use mod_mhd
   implicit none
   double precision :: rhoj, eta, vj
-
+  double precision :: amp, B_strength, jet_time, alpha_val, tilt_pc
 contains
 
   subroutine usr_init()
@@ -13,14 +13,30 @@ contains
     usr_refine_grid   => specialrefine_grid
 
     call mhd_activate()
+    call params_read(par_files)
 
   end subroutine usr_init
+
+!> Read parameters from a file
+  subroutine params_read(files)
+  use mod_global_parameters, only: unitpar
+  character(len=*), intent(in) :: files(:)
+  integer                      :: n
+
+  namelist /my_parameters/ amp,B_strength,jet_time,alpha_val,tilt_pc  
+  do n = 1, size(files)
+    open(unitpar, file=trim(files(n)), status="old")
+    read(unitpar, my_parameters, end=113)
+113 close(unitpar)
+      end do
+  end subroutine params_read
+
 
   subroutine initglobaldata_usr
     
     mhd_gamma=1.4d0
     rhoj=mhd_gamma
-    eta=10.d0
+    eta=100.d0
     vj=800.d0
 
   end subroutine initglobaldata_usr
@@ -37,14 +53,18 @@ contains
 
     where(dabs(x(ix^S,1))<0.05d0.and.x(ix^S,2)<0.00d0)
        w(ix^S,rho_)=rhoj
-       w(ix^S,mom(1))=zero
+       w(ix^S,mom(1))=0.0d0
        w(ix^S,mom(2))=rhoj*vj
-       w(ix^S,e_)=one/(mhd_gamma-one)+0.5d0*rhoj*vj**2.0d0
+       w(ix^S,e_)=one/(mhd_gamma-one)+0.5d0*rhoj*vj**2.0d0+0.5d0*B_strength**2.0d0
+       w(ix^S,mag(1))=0.0d0
+       w(ix^S,mag(2))=B_strength
     else where
        w(ix^S,rho_) = rhoj/eta
-       w(ix^S,e_) = one/(mhd_gamma-one)
-       w(ix^S,mom(1)) = zero
-       w(ix^S,mom(2)) = zero
+       w(ix^S,e_) = one/(mhd_gamma-one)+0.5d0*B_strength**2.0d0
+       w(ix^S,mom(1)) = 0.0d0
+       w(ix^S,mom(2)) = 0.0d0
+       w(ix^S,mag(1))=0.0d0
+       w(ix^S,mag(2))=B_strength
     end where
 
   end subroutine initonegrid_usr
@@ -71,8 +91,12 @@ contains
        w(ixI^S,rho_)=rhoj
        w(ixI^S,mom(1))=zero
        w(ixI^S,mom(2))=rhoj*vj
-       w(ixI^S,e_)=one/(mhd_gamma-one)+0.5d0*rhoj*vj**2.0d0
+       w(ixI^S,e_)=one/(mhd_gamma-one)+0.5d0*rhoj*vj**2.0d0+0.5*B_strength**2.0d0
+       w(ixI^S,mag(1))=0.0d0
+       w(ixI^S,mag(2))=B_strength
     else where
+       w(ixI^S,mag(1))=0.0d0
+       w(ixI^S,mag(2))=B_strength
        ! Reflective:
        !   w(ixI^S,rho_) = w(ixImin1:ixImax1,ixImax2+nghostcells:ixImax2+1:-1,rho_) 
        !   w(ixI^S,e_) = w(ixImin1:ixImax1,ixImax2+nghostcells:ixImax2+1:-1,e_) 
