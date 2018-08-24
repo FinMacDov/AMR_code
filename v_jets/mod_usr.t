@@ -11,6 +11,7 @@ contains
     usr_init_one_grid => initonegrid_usr
     usr_special_bc    => specialbound_usr
     usr_refine_grid   => specialrefine_grid
+    usr_aux_output      => specialvar_output
 
     call mhd_activate()
     call params_read(par_files)
@@ -105,6 +106,91 @@ contains
     end where
 
   end subroutine specialbound_usr
+
+  subroutine specialvar_output(ixI^L,ixO^L,w,x,normconv)
+  ! this subroutine can be used in convert, to add auxiliary variables to the
+  ! converted output file, for further analysis using tecplot, paraview, ....
+  ! these auxiliary values need to be stored in the nw+1:nw+nwauxio slots
+  ! the array normconv can be filled in the (nw+1:nw+nwauxio) range with
+  ! corresponding normalization values (default value 1)
+    use mod_global_parameters
+
+    integer, intent(in)                :: ixI^L,ixO^L
+    double precision, intent(in)       :: x(ixI^S,1:ndim)
+    double precision                   :: w(ixI^S,nw+nwauxio)
+    double precision                   :: normconv(0:nw+nwauxio)
+
+    double precision :: pth(ixI^S),B2(ixI^S),tmp2(ixI^S),dRdT(ixI^S)
+    double precision :: ens(ixI^S),divb(ixI^S),wlocal(ixI^S,1:nw)
+    double precision :: Btotal(ixI^S,1:ndir),curlvec(ixI^S,1:ndir)
+    integer :: idirmin,idir,ix^D
+
+    double precision:: gradrho(ixG^T),rho(ixG^T),drho(ixG^T)
+    double precision:: gradp(ixG^T),dp(ixG^T), ggrid(ixI^S), p(ixG^T)
+    double precision:: kk,kk0,grhomax,kk1
+    integer         :: idims
+    logical, save   :: firstrun=.true.
+    ! output temperature
+    wlocal(ixI^S,1:nw)=w(ixI^S,1:nw)
+    ! output temperature
+    call mhd_get_pthermal(wlocal,x,ixI^L,ixO^L,pth)
+    w(ixO^S,nw+1)=pth(ixO^S)/w(ixO^S,rho_)*unit_temperature
+
+    do idir=1,ndir
+      if(B0field) then
+        Btotal(ixI^S,idir)=w(ixI^S,mag(idir))+block%B0(ixI^S,idir,0)
+      else
+        Btotal(ixI^S,idir)=w(ixI^S,mag(idir))
+      endif
+    end do
+    ! B^2
+    B2(ixO^S)=sum((Btotal(ixO^S,:))**2,dim=ndim+1)
+
+    ! output Alfven wave speed B/sqrt(rho)
+    w(ixO^S,nw+2)=unit_velocity*dsqrt(B2(ixO^S)/w(ixO^S,rho_))
+
+    ! output divB1
+    call get_normalized_divb(wlocal,ixI^L,ixO^L,divb)
+    w(ixO^S,nw+3)=divb(ixO^S)
+
+    ! output the plasma beta p*2/B**2
+    w(ixO^S,nw+4)=pth(ixO^S)*two/B2(ixO^S)
+
+     rho(ixI^S)=w(ixI^S,rho_)
+     gradrho(ixO^S)=zero
+     do idims=1,ndim
+       select case(typegrad)
+       case("central")
+         call gradient(rho*unit_density,ixI^L,ixO^L,idims,drho)
+       case("limited")
+         call gradientS(rho*unit_density,ixI^L,ixO^L,idims,drho)
+       end select
+       gradrho(ixO^S)=gradrho(ixO^S)+drho(ixO^S)**2.0d0
+     enddo
+
+     gradrho(ixO^S)=dsqrt(gradrho(ixO^S))
+     kk=5.0d0
+     kk0=0.01d0
+     kk1=1.0d0
+     grhomax=1.d-8
+
+!     grhomax=MAXVAL(gradrho(ixO^S))
+
+  ! putting the schlierplot of density in nwauxio=1
+     w(ixO^S,nw+5)=dexp(-kk*(gradrho(ixO^S)-kk0*grhomax)/(kk1*grhomax-kk0*grhomax))
+   
+     w(ixO^S,nw+6)=unit_velocity*dsqrt(mhd_gamma*pth(ixO^S)/w(ixO^S,rho_))
+
+  end subroutine specialvar_output
+
+  subroutine specialvarnames_output(varnames)
+  ! newly added variables need to be concatenated with the w_names/primnames string
+    use mod_global_parameters
+    character(len=*) :: varnames
+
+    varnames='Te Alfv divB beta schrho cs'
+
+  end subroutine specialvarnames_output
 
   subroutine specialrefine_grid(igrid,level,ixG^L,ix^L,qt,w,x,refine,coarsen)
 
