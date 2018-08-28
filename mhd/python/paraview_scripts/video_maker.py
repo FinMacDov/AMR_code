@@ -76,29 +76,179 @@ clip1.ClipType.Normal = [0.0, 1.0, 0.0]
 Hide3DWidgets(proxy=clip1.ClipType)
 # update the view to ensure updated data information
 renderView1.Update()
-# show data in view
-clip1Display = Show(clip1, renderView1)
-# set scalar coloring
-ColorBy(clip1Display, ('CELLS', 'rho'))
 
-# This rcentres the camera
-#-----------------
-# reset view to fit data
-renderView1.ResetCamera()
-
-#### saving camera placements for all active views
-
-# current camera placement for renderView1
-renderView1.CameraPosition = [0.0, 1000000000.0, 4161335812.827366]
-renderView1.CameraFocalPoint = [0.0, 1000000000.0, 0.0]
-renderView1.CameraParallelScale = 1077032961.4269009
-#-------------------------
-
-# show color bar/color legend
-clip1Display.SetScalarBarVisibility(renderView1, True)
-
-#split the scree
+#split the screen
 # get layout
 layout1 = GetLayout()
-# split cell
-layout1.SplitHorizontal(0, 0.33333)
+# makes sure three panels are the same size
+size1 = 1.0/3.0
+size2 = size1 
+size_scaler = size1+(1.0-size1)*size2
+
+# split cell into 3 views
+layout1.SplitHorizontal(0, size1)
+# Create a new 'Render View'
+renderView2 = CreateView('RenderView')
+renderView2.ViewSize = [950, 1025]
+renderView2.AxesGrid = 'GridAxes3DActor'
+renderView2.StereoType = 0
+renderView2.Background = [0.32, 0.34, 0.43]
+renderView2.OSPRayMaterialLibrary = materialLibrary1
+
+# init the 'GridAxes3DActor' selected for 'AxesGrid'
+renderView2.AxesGrid.Visibility = 1
+renderView2.AxesGrid.YTitle = '     Y Axis'
+renderView2.AxesGrid.XTitleFontFile = ''
+renderView2.AxesGrid.XTitleBold = 1
+renderView2.AxesGrid.XTitleFontSize = 15
+renderView2.AxesGrid.YTitleFontFile = ''
+renderView2.AxesGrid.YTitleBold = 1
+renderView2.AxesGrid.YTitleFontSize = 15
+renderView2.AxesGrid.ZTitleFontFile = ''
+renderView2.AxesGrid.ZTitleBold = 1
+renderView2.AxesGrid.ZTitleFontSize = 15
+renderView2.AxesGrid.XLabelFontFile = ''
+renderView2.AxesGrid.XLabelBold = 1
+renderView2.AxesGrid.XLabelFontSize = 15
+renderView2.AxesGrid.YLabelFontFile = ''
+renderView2.AxesGrid.YLabelBold = 1
+renderView2.AxesGrid.YLabelFontSize = 15
+renderView2.AxesGrid.ZLabelFontFile = ''
+renderView2.AxesGrid.ZLabelBold = 1
+renderView2.AxesGrid.ZLabelFontSize = 15
+
+# place view in the layout
+layout1.AssignView(2, renderView2)
+
+layout1.SplitHorizontal(2, size_scaler)
+
+# set active view
+SetActiveView(None)
+
+# get the material library
+materialLibrary1 = GetMaterialLibrary()
+
+#create render view 3
+renderView3 = CreateView('RenderView')
+renderView3.ViewSize = [579, 1025]
+renderView3.AxesGrid = 'GridAxes3DActor'
+renderView3.StereoType = 0
+renderView3.Background = [0.32, 0.34, 0.43]
+renderView3.OSPRayMaterialLibrary = materialLibrary1
+
+# init the 'GridAxes3DActor' selected for 'AxesGrid'
+renderView3.AxesGrid.Visibility = 1
+renderView3.AxesGrid.YTitle = '     Y Axis'
+renderView3.AxesGrid.XTitleFontFile = ''
+renderView3.AxesGrid.XTitleBold = 1
+renderView3.AxesGrid.XTitleFontSize = 15
+renderView3.AxesGrid.YTitleFontFile = ''
+renderView3.AxesGrid.YTitleBold = 1
+renderView3.AxesGrid.YTitleFontSize = 15
+renderView3.AxesGrid.ZTitleFontFile = ''
+renderView3.AxesGrid.ZTitleBold = 1
+renderView3.AxesGrid.ZTitleFontSize = 15
+renderView3.AxesGrid.XLabelFontFile = ''
+renderView3.AxesGrid.XLabelBold = 1
+renderView3.AxesGrid.XLabelFontSize = 15
+renderView3.AxesGrid.YLabelFontFile = ''
+renderView3.AxesGrid.YLabelBold = 1
+renderView3.AxesGrid.YLabelFontSize = 15
+renderView3.AxesGrid.ZLabelFontFile = ''
+renderView3.AxesGrid.ZLabelBold = 1
+renderView3.AxesGrid.ZLabelFontSize = 15
+
+# place view in the layout
+layout1.AssignView(6, renderView3)
+
+# Hide orientation axes
+renderView2.OrientationAxesVisibility = 0
+renderView3.OrientationAxesVisibility = 0
+
+# show data in view
+clip1Display_1 = Show(clip1, renderView2)
+clip1Display_2 = Show(clip1, renderView3)
+
+# trace defaults for the display properties.
+clip1Display_1.Representation = 'Surface'
+clip1Display_1.ColorArrayName = [None, '']
+clip1Display_1.OSPRayScaleFunction = 'PiecewiseFunction'
+clip1Display_1.SelectOrientationVectors = 'None'
+clip1Display_1.ScaleFactor = 200000000.0
+clip1Display_1.SelectScaleArray = 'None'
+clip1Display_1.GlyphType = 'Arrow'
+clip1Display_1.GlyphTableIndexArray = 'None'
+clip1Display_1.GaussianRadius = 10000000.0
+clip1Display_1.SetScaleArray = [None, '']
+clip1Display_1.ScaleTransferFunction = 'PiecewiseFunction'
+clip1Display_1.OpacityArray = [None, '']
+clip1Display_1.OpacityTransferFunction = 'PiecewiseFunction'
+clip1Display_1.DataAxesGrid = 'GridAxesRepresentation'
+clip1Display_1.SelectionCellLabelFontFile = ''
+clip1Display_1.SelectionPointLabelFontFile = ''
+clip1Display_1.PolarAxes = 'PolarAxesRepresentation'
+clip1Display_1.ScalarOpacityUnitDistance = 40374875.092163
+
+clip1Display_2.Representation = 'Surface'
+clip1Display_2.ColorArrayName = [None, '']
+clip1Display_2.OSPRayScaleFunction = 'PiecewiseFunction'
+clip1Display_2.SelectOrientationVectors = 'None'
+clip1Display_2.ScaleFactor = 200000000.0
+clip1Display_2.SelectScaleArray = 'None'
+clip1Display_2.GlyphType = 'Arrow'
+clip1Display_2.GlyphTableIndexArray = 'None'
+clip1Display_2.GaussianRadius = 10000000.0
+clip1Display_2.SetScaleArray = [None, '']
+clip1Display_2.ScaleTransferFunction = 'PiecewiseFunction'
+clip1Display_2.OpacityArray = [None, '']
+clip1Display_2.OpacityTransferFunction = 'PiecewiseFunction'
+clip1Display_2.DataAxesGrid = 'GridAxesRepresentation'
+clip1Display_2.SelectionCellLabelFontFile = ''
+clip1Display_2.SelectionPointLabelFontFile = ''
+clip1Display_2.PolarAxes = 'PolarAxesRepresentation'
+clip1Display_2.ScalarOpacityUnitDistance = 40374875.092163
+
+# init the 'GridAxesRepresentation' selected for 'DataAxesGrid'
+clip1Display_1.DataAxesGrid.XTitleFontFile = ''
+clip1Display_1.DataAxesGrid.YTitleFontFile = ''
+clip1Display_1.DataAxesGrid.ZTitleFontFile = ''
+clip1Display_1.DataAxesGrid.XLabelFontFile = ''
+clip1Display_1.DataAxesGrid.YLabelFontFile = ''
+clip1Display_1.DataAxesGrid.ZLabelFontFile = ''
+
+clip1Display_2.DataAxesGrid.XTitleFontFile = ''
+clip1Display_2.DataAxesGrid.YTitleFontFile = ''
+clip1Display_2.DataAxesGrid.ZTitleFontFile = ''
+clip1Display_2.DataAxesGrid.XLabelFontFile = ''
+clip1Display_2.DataAxesGrid.YLabelFontFile = ''
+clip1Display_2.DataAxesGrid.ZLabelFontFile = ''
+
+# current camera placement for renderView1
+#renderView1.CameraPosition = [0.0, 1000000000.0, 4161335812.827366]
+#renderView1.CameraFocalPoint = [0.0, 1000000000.0, 0.0]
+#renderView1.CameraParallelScale = 1077032961.4269009
+
+# show data in view
+clip1Display = Show(clip1, renderView1)
+# reset view to fit data
+renderView1.ResetCamera()
+renderView2.ResetCamera()
+
+renderView3.CameraPosition = [0.0, 1000000000.0, 5355055267.808309]
+renderView3.CameraFocalPoint = [0.0, 1000000000.0, 0.0]
+renderView3.CameraParallelScale = 1269797383.5004656
+renderView3.ResetCamera()
+
+
+# set scalar coloring
+ColorBy(clip1Display, ('CELLS', 'rho'))
+ColorBy(clip1Display_1, ('CELLS', 'Te'))
+ColorBy(clip1Display_2, ('CELLS', 'v2'))
+# show color bar/color legend
+clip1Display.SetScalarBarVisibility(renderView1, True)
+clip1Display_1.SetScalarBarVisibility(renderView2, True)
+clip1Display_2.SetScalarBarVisibility(renderView3, True)
+## Note: resize frame
+#layout1.SetSplitFraction(0, 0.33333)
+
+
