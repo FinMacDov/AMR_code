@@ -348,6 +348,18 @@ renderView1.OrientationAxesVisibility = 0
 renderView2.OrientationAxesVisibility = 0
 renderView3.OrientationAxesVisibility = 0
 
+# set scalar coloring
+ColorBy(clip1Display, ('CELLS', 'rho'))
+ColorBy(clip1Display_1, ('CELLS', 'Te'))
+ColorBy(clip1Display_2, ('CELLS', 'v2'))
+
+# show color bar/color legend
+clip1Display.SetScalarBarVisibility(renderView1, True)
+clip1Display_1.SetScalarBarVisibility(renderView2, True)
+clip1Display_2.SetScalarBarVisibility(renderView3, True)
+
+
+
 ## Note: resize frame
 #layout1.SetSplitFraction(0, 0.33333)
 
