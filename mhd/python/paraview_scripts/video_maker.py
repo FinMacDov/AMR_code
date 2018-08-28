@@ -19,8 +19,34 @@ animationScene1 = GetAnimationScene()
 # This dispays the nb of timesteps
 animationScene1.UpdateAnimationUsingDataTimeSteps()
 
-# get active view
-renderView1 = GetActiveViewOrCreate('RenderView')
+renderView1 = CreateView('RenderView')
+renderView1.ViewSize = [969, 415]
+renderView1.AxesGrid = 'GridAxes3DActor'
+renderView1.StereoType = 0
+renderView1.Background = [0.32, 0.34, 0.43]
+renderView1.OSPRayMaterialLibrary = materialLibrary1
+
+# init the 'GridAxes3DActor' selected for 'AxesGrid'
+renderView1.AxesGrid.Visibility = 1
+renderView1.AxesGrid.YTitle = '     Y Axis'
+renderView1.AxesGrid.XTitleFontFile = ''
+renderView1.AxesGrid.XTitleBold = 1
+renderView1.AxesGrid.XTitleFontSize = 15
+renderView1.AxesGrid.YTitleFontFile = ''
+renderView1.AxesGrid.YTitleBold = 1
+renderView1.AxesGrid.YTitleFontSize = 15
+renderView1.AxesGrid.ZTitleFontFile = ''
+renderView1.AxesGrid.ZTitleBold = 1
+renderView1.AxesGrid.ZTitleFontSize = 15
+renderView1.AxesGrid.XLabelFontFile = ''
+renderView1.AxesGrid.XLabelBold = 1
+renderView1.AxesGrid.XLabelFontSize = 15
+renderView1.AxesGrid.YLabelFontFile = ''
+renderView1.AxesGrid.YLabelBold = 1
+renderView1.AxesGrid.YLabelFontSize = 15
+renderView1.AxesGrid.ZLabelFontFile = ''
+renderView1.AxesGrid.ZLabelBold = 1
+renderView1.AxesGrid.ZLabelFontSize = 15
 # uncomment following to set a specific view size
 # renderView1.ViewSize = [1910, 1025]
 
@@ -77,19 +103,31 @@ Hide3DWidgets(proxy=clip1.ClipType)
 # update the view to ensure updated data information
 renderView1.Update()
 
-#split the screen
-# get layout
-layout1 = GetLayout()
 # makes sure three panels are the same size
 size1 = 1.0/3.0
-size2 = size1 
-size_scaler = size1+(1.0-size1)*size2
+size2 = 0.5
 
-# split cell into 3 views
-layout1.SplitHorizontal(0, size1)
+# get the material library
+materialLibrary1 = GetMaterialLibrary()
+
+# get layout
+layout1 = GetLayout()
+
+# place view in the layout
+layout1.AssignView(0, renderView1)
+
+# split cell
+layout1.SplitHorizontal(0, 0.5)
+
+# set active view
+SetActiveView(None)
+
+# split cell
+layout1.SplitHorizontal(2, 0.5)
+
 # Create a new 'Render View'
 renderView2 = CreateView('RenderView')
-renderView2.ViewSize = [950, 1025]
+renderView2.ViewSize = [640, 480]
 renderView2.AxesGrid = 'GridAxes3DActor'
 renderView2.StereoType = 0
 renderView2.Background = [0.32, 0.34, 0.43]
@@ -118,19 +156,14 @@ renderView2.AxesGrid.ZLabelBold = 1
 renderView2.AxesGrid.ZLabelFontSize = 15
 
 # place view in the layout
-layout1.AssignView(2, renderView2)
-
-layout1.SplitHorizontal(2, size_scaler)
+layout1.AssignView(5, renderView2)
 
 # set active view
 SetActiveView(None)
 
-# get the material library
-materialLibrary1 = GetMaterialLibrary()
-
-#create render view 3
+# Create a new 'Render View'
 renderView3 = CreateView('RenderView')
-renderView3.ViewSize = [579, 1025]
+renderView3.ViewSize = [235, 415]
 renderView3.AxesGrid = 'GridAxes3DActor'
 renderView3.StereoType = 0
 renderView3.Background = [0.32, 0.34, 0.43]
@@ -161,13 +194,66 @@ renderView3.AxesGrid.ZLabelFontSize = 15
 # place view in the layout
 layout1.AssignView(6, renderView3)
 
-# Hide orientation axes
-renderView2.OrientationAxesVisibility = 0
-renderView3.OrientationAxesVisibility = 0
+# set active view
+SetActiveView(renderView1)
+
+# resize frame
+layout1.SetSplitFraction(0, size1)
+
+# resize frame
+layout1.SetSplitFraction(2, size2)
+
+# find source
+clip1 = FindSource('Clip1')
+
+# set active source
+SetActiveSource(clip1)
+
+# show data in view
+clip1Display = Show(clip1, renderView1)
+
+# trace defaults for the display properties.
+clip1Display.Representation = 'Surface'
+clip1Display.ColorArrayName = [None, '']
+clip1Display.OSPRayScaleFunction = 'PiecewiseFunction'
+clip1Display.SelectOrientationVectors = 'None'
+clip1Display.ScaleFactor = 200000000.0
+clip1Display.SelectScaleArray = 'None'
+clip1Display.GlyphType = 'Arrow'
+clip1Display.GlyphTableIndexArray = 'None'
+clip1Display.GaussianRadius = 10000000.0
+clip1Display.SetScaleArray = [None, '']
+clip1Display.ScaleTransferFunction = 'PiecewiseFunction'
+clip1Display.OpacityArray = [None, '']
+clip1Display.OpacityTransferFunction = 'PiecewiseFunction'
+clip1Display.DataAxesGrid = 'GridAxesRepresentation'
+clip1Display.SelectionCellLabelFontFile = ''
+clip1Display.SelectionPointLabelFontFile = ''
+clip1Display.PolarAxes = 'PolarAxesRepresentation'
+clip1Display.ScalarOpacityUnitDistance = 42210192.22786043
+
+# init the 'GridAxesRepresentation' selected for 'DataAxesGrid'
+clip1Display.DataAxesGrid.XTitleFontFile = ''
+clip1Display.DataAxesGrid.YTitleFontFile = ''
+clip1Display.DataAxesGrid.ZTitleFontFile = ''
+clip1Display.DataAxesGrid.XLabelFontFile = ''
+clip1Display.DataAxesGrid.YLabelFontFile = ''
+clip1Display.DataAxesGrid.ZLabelFontFile = ''
+
+# init the 'PolarAxesRepresentation' selected for 'PolarAxes'
+clip1Display.PolarAxes.PolarAxisTitleFontFile = ''
+clip1Display.PolarAxes.PolarAxisLabelFontFile = ''
+clip1Display.PolarAxes.LastRadialAxisTextFontFile = ''
+clip1Display.PolarAxes.SecondaryRadialAxesTextFontFile = ''
+
+# reset view to fit data
+renderView1.ResetCamera()
+
+# set active view
+SetActiveView(renderView2)
 
 # show data in view
 clip1Display_1 = Show(clip1, renderView2)
-clip1Display_2 = Show(clip1, renderView3)
 
 # trace defaults for the display properties.
 clip1Display_1.Representation = 'Surface'
@@ -187,8 +273,32 @@ clip1Display_1.DataAxesGrid = 'GridAxesRepresentation'
 clip1Display_1.SelectionCellLabelFontFile = ''
 clip1Display_1.SelectionPointLabelFontFile = ''
 clip1Display_1.PolarAxes = 'PolarAxesRepresentation'
-clip1Display_1.ScalarOpacityUnitDistance = 40374875.092163
+clip1Display_1.ScalarOpacityUnitDistance = 42210192.22786043
 
+# init the 'GridAxesRepresentation' selected for 'DataAxesGrid'
+clip1Display_1.DataAxesGrid.XTitleFontFile = ''
+clip1Display_1.DataAxesGrid.YTitleFontFile = ''
+clip1Display_1.DataAxesGrid.ZTitleFontFile = ''
+clip1Display_1.DataAxesGrid.XLabelFontFile = ''
+clip1Display_1.DataAxesGrid.YLabelFontFile = ''
+clip1Display_1.DataAxesGrid.ZLabelFontFile = ''
+
+# init the 'PolarAxesRepresentation' selected for 'PolarAxes'
+clip1Display_1.PolarAxes.PolarAxisTitleFontFile = ''
+clip1Display_1.PolarAxes.PolarAxisLabelFontFile = ''
+clip1Display_1.PolarAxes.LastRadialAxisTextFontFile = ''
+clip1Display_1.PolarAxes.SecondaryRadialAxesTextFontFile = ''
+
+# reset view to fit data
+renderView2.ResetCamera()
+
+# set active view
+SetActiveView(renderView3)
+
+# show data in view
+clip1Display_2 = Show(clip1, renderView3)
+
+# trace defaults for the display properties.
 clip1Display_2.Representation = 'Surface'
 clip1Display_2.ColorArrayName = [None, '']
 clip1Display_2.OSPRayScaleFunction = 'PiecewiseFunction'
@@ -206,16 +316,9 @@ clip1Display_2.DataAxesGrid = 'GridAxesRepresentation'
 clip1Display_2.SelectionCellLabelFontFile = ''
 clip1Display_2.SelectionPointLabelFontFile = ''
 clip1Display_2.PolarAxes = 'PolarAxesRepresentation'
-clip1Display_2.ScalarOpacityUnitDistance = 40374875.092163
+clip1Display_2.ScalarOpacityUnitDistance = 42210192.22786043
 
 # init the 'GridAxesRepresentation' selected for 'DataAxesGrid'
-clip1Display_1.DataAxesGrid.XTitleFontFile = ''
-clip1Display_1.DataAxesGrid.YTitleFontFile = ''
-clip1Display_1.DataAxesGrid.ZTitleFontFile = ''
-clip1Display_1.DataAxesGrid.XLabelFontFile = ''
-clip1Display_1.DataAxesGrid.YLabelFontFile = ''
-clip1Display_1.DataAxesGrid.ZLabelFontFile = ''
-
 clip1Display_2.DataAxesGrid.XTitleFontFile = ''
 clip1Display_2.DataAxesGrid.YTitleFontFile = ''
 clip1Display_2.DataAxesGrid.ZTitleFontFile = ''
@@ -223,31 +326,33 @@ clip1Display_2.DataAxesGrid.XLabelFontFile = ''
 clip1Display_2.DataAxesGrid.YLabelFontFile = ''
 clip1Display_2.DataAxesGrid.ZLabelFontFile = ''
 
-# current camera placement for renderView1
-#renderView1.CameraPosition = [0.0, 1000000000.0, 4161335812.827366]
-#renderView1.CameraFocalPoint = [0.0, 1000000000.0, 0.0]
-#renderView1.CameraParallelScale = 1077032961.4269009
+# init the 'PolarAxesRepresentation' selected for 'PolarAxes'
+clip1Display_2.PolarAxes.PolarAxisTitleFontFile = ''
+clip1Display_2.PolarAxes.PolarAxisLabelFontFile = ''
+clip1Display_2.PolarAxes.LastRadialAxisTextFontFile = ''
+clip1Display_2.PolarAxes.SecondaryRadialAxesTextFontFile = ''
 
-# show data in view
-clip1Display = Show(clip1, renderView1)
 # reset view to fit data
-renderView1.ResetCamera()
-renderView2.ResetCamera()
-
-renderView3.CameraPosition = [0.0, 1000000000.0, 5355055267.808309]
-renderView3.CameraFocalPoint = [0.0, 1000000000.0, 0.0]
-renderView3.CameraParallelScale = 1269797383.5004656
 renderView3.ResetCamera()
 
+#### saving camera placements for all active views
 
-# set scalar coloring
-ColorBy(clip1Display, ('CELLS', 'rho'))
-ColorBy(clip1Display_1, ('CELLS', 'Te'))
-ColorBy(clip1Display_2, ('CELLS', 'v2'))
-# show color bar/color legend
-clip1Display.SetScalarBarVisibility(renderView1, True)
-clip1Display_1.SetScalarBarVisibility(renderView2, True)
-clip1Display_2.SetScalarBarVisibility(renderView3, True)
+# current camera placement for renderView1
+renderView1.CameraPosition = [0.0, 1000000000.0, 4732231590.200705]
+renderView1.CameraFocalPoint = [0.0, 1000000000.0, 0.0]
+renderView1.CameraParallelScale = 1234720107.7131598
+
+# current camera placement for renderView2
+renderView2.CameraPosition = [0.0, 1000000000.0, 5539297653.787327]
+renderView2.CameraFocalPoint = [0.0, 1000000000.0, 0.0]
+renderView2.CameraParallelScale = 1455924035.805094
+
+# current camera placement for renderView3
+renderView3.CameraPosition = [0.0, 1000000000.0, 6012534701.09408]
+renderView3.CameraFocalPoint = [0.0, 1000000000.0, 0.0]
+renderView3.CameraParallelScale = 1584995315.5750492
+
+
 ## Note: resize frame
 #layout1.SetSplitFraction(0, 0.33333)
 
