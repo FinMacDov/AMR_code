@@ -50,9 +50,6 @@ renderView1.AxesGrid.ZLabelFontSize = 15
 # uncomment following to set a specific view size
 # renderView1.ViewSize = [1910, 1025]
 
-# Hide orientation axes
-renderView1.OrientationAxesVisibility = 0
-
 # displays the data in paraview
 jet_B30_V30_0Display = Show(jet_B30_V30_0, renderView1)
 
@@ -197,10 +194,8 @@ layout1.AssignView(6, renderView3)
 # set active view
 SetActiveView(renderView1)
 
-# resize frame
+# splits the frames into three 
 layout1.SetSplitFraction(0, size1)
-
-# resize frame
 layout1.SetSplitFraction(2, size2)
 
 # find source
@@ -332,26 +327,26 @@ clip1Display_2.PolarAxes.PolarAxisLabelFontFile = ''
 clip1Display_2.PolarAxes.LastRadialAxisTextFontFile = ''
 clip1Display_2.PolarAxes.SecondaryRadialAxesTextFontFile = ''
 
-# reset view to fit data
-renderView3.ResetCamera()
-
-#### saving camera placements for all active views
-
+#set the camera views for each render
 # current camera placement for renderView1
-renderView1.CameraPosition = [0.0, 1000000000.0, 4732231590.200705]
+renderView1.CameraPosition = [0.0, 1000000000.0, 4700000000.0]
 renderView1.CameraFocalPoint = [0.0, 1000000000.0, 0.0]
-renderView1.CameraParallelScale = 1234720107.7131598
+renderView1.CameraParallelScale = 1405561883.6231568
 
 # current camera placement for renderView2
-renderView2.CameraPosition = [0.0, 1000000000.0, 5539297653.787327]
+renderView2.CameraPosition = [0.0, 1000000000.0, 4700000000.0]
 renderView2.CameraFocalPoint = [0.0, 1000000000.0, 0.0]
-renderView2.CameraParallelScale = 1455924035.805094
+renderView2.CameraParallelScale = 1405561883.6231568
 
 # current camera placement for renderView3
-renderView3.CameraPosition = [0.0, 1000000000.0, 6012534701.09408]
+renderView3.CameraPosition = [0.0, 1000000000.0, 4700000000.0]
 renderView3.CameraFocalPoint = [0.0, 1000000000.0, 0.0]
-renderView3.CameraParallelScale = 1584995315.5750492
+renderView3.CameraParallelScale = 1405561883.6231568
 
+# Hide orientation axes
+renderView1.OrientationAxesVisibility = 0
+renderView2.OrientationAxesVisibility = 0
+renderView3.OrientationAxesVisibility = 0
 
 ## Note: resize frame
 #layout1.SetSplitFraction(0, 0.33333)
