@@ -36,8 +36,10 @@ def render_view_func():
     renderView.AxesGrid.ZLabelFontSize = 15
     
     renderView.OrientationAxesVisibility = 0
+    renderView.InteractionMode = '2D'
     
-    renderView.CameraPosition = [0.0, 1000000000.0, 4700000000.0]
+    renderView.CameraPosition = [62068695.867912374, 1006066501.1989748, 6607406493.1831665]
+#    renderView.CameraPosition = [0.0, 1000000000.0, 4700000000.0]
     renderView.CameraFocalPoint = [0.0, 1000000000.0, 0.0]
     renderView.CameraParallelScale = 1405561883.6231568
 
@@ -181,8 +183,9 @@ clip1 = FindSource('Clip1')
 SetActiveSource(clip1)
 # SETING COLOR BAR PROPERTIES
 colbar_pos_x = 0.85
-colbar_pos_y = 0.125
+colbar_pos_y = 0.12
 scalar_bar_length = 0.75
+scalar_bar_thickness = 15
 
 clip_1display = []
 rendLUT = []
@@ -190,7 +193,7 @@ rendLUTColorBar = []
 for i in range(nb_panels):
     SetActiveView(render_view[i])
     clip_1display.append(clip_display(clip1,render_view[i]))    
-    render_view[i].ResetCamera()
+#    render_view[i].ResetCamera()
     # set scalar coloring
     ColorBy(clip_1display[i], ('CELLS', data_names[i]))
     # show color bar/color legend
@@ -198,12 +201,15 @@ for i in range(nb_panels):
     rendLUT.append(GetColorTransferFunction(data_names[i]))
     # where the color is change for vars
     rendLUT[i].ApplyPreset(colour_wheel[i], True) 
-    
     rendLUTColorBar.append(GetScalarBar(rendLUT[i], render_view[i]))
+    # colour bar text col, pos and font size
     rendLUTColorBar[i].TitleColor = col_black
     rendLUTColorBar[i].LabelColor = col_black
     rendLUTColorBar[i].ScalarBarLength = scalar_bar_length
+    rendLUTColorBar[i].ScalarBarThickness = scalar_bar_thickness
     rendLUTColorBar[i].Position = [colbar_pos_x, colbar_pos_y]
+    rendLUTColorBar[i].TitleFontSize = 14
+    rendLUTColorBar[i].LabelFontSize = 13
 
 #
 ### Note: resize frame
