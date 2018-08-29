@@ -172,13 +172,20 @@ for i in range(1,nb_panels):
     layout1.AssignView(4+i, render_view[i])
 
 data_names = [data.CellArrayStatus[0],data.CellArrayStatus[9],data.CellArrayStatus[2]] 
-colour_wheel = ['Black-Body', 'Cool to Warm (Extended)', 'Cool to Warm (Extended)']
+colour_wheel = ['Black-Body Radiation', 'Cool to Warm (Extended)', 'Cool to Warm (Extended)']
+col_black = [0.0, 0.0, 0.0]
+col_white = [1.0, 1.0, 1.0]
 # find source
 clip1 = FindSource('Clip1')
 # set active source
 SetActiveSource(clip1)
 # SETING COLOR BAR PROPERTIES
+colbar_pos_x = 0.85
+colbar_pos_y = 0.125
+scalar_bar_length = 0.75
+
 clip_1display = []
+rendLUT = []
 rendLUTColorBar = []
 for i in range(nb_panels):
     SetActiveView(render_view[i])
@@ -188,37 +195,16 @@ for i in range(nb_panels):
     ColorBy(clip_1display[i], ('CELLS', data_names[i]))
     # show color bar/color legend
     clip_1display[i].SetScalarBarVisibility(render_view[i], True)
+    rendLUT.append(GetColorTransferFunction(data_names[i]))
+    # where the color is change for vars
+    rendLUT[i].ApplyPreset(colour_wheel[i], True) 
+    
+    rendLUTColorBar.append(GetScalarBar(rendLUT[i], render_view[i]))
+    rendLUTColorBar[i].TitleColor = col_black
+    rendLUTColorBar[i].LabelColor = col_black
+    rendLUTColorBar[i].ScalarBarLength = scalar_bar_length
+    rendLUTColorBar[i].Position = [colbar_pos_x, colbar_pos_y]
 
-#    rendLUTColorBar.append(GetColorTransferFunction(data_names[i]))
-#    rendLUTColorBar[i].GetScalarBar(rend[i], renderView1)
-
-## get color legend/bar for rhoLUT in view renderView1
-#rend1LUTColorBar = GetScalarBar(rend1LUT, renderView1)
-#rend2LUTColorBar = GetScalarBar(rend2LUT, renderView2)
-#rend3LUTColorBar = GetScalarBar(rend3LUT, renderView3)
-#
-#col_black = [0.0, 0.0, 0.0]
-#col_white = [1.0, 1.0, 1.0]
-## Properties modified on v2LUTColorBar
-#rend1LUTColorBar.TitleColor = col_black
-#rend2LUTColorBar.TitleColor = col_black
-#rend3LUTColorBar.TitleColor = col_black
-## Properties modified on v2LUTColorBar
-#rend1LUTColorBar.LabelColor = col_black
-#rend2LUTColorBar.LabelColor = col_black
-#rend3LUTColorBar.LabelColor = col_black
-#
-## change scalar bar length
-#rend1LUTColorBar.ScalarBarLength = 0.75
-#rend2LUTColorBar.ScalarBarLength = 0.75
-#rend3LUTColorBar.ScalarBarLength = 0.75
-#
-## change scalar bar placement
-#colbar_pos_x = 0.85
-#colbar_pos_y = 0.125
-#rend1LUTColorBar.Position = [colbar_pos_x, colbar_pos_y]
-#rend2LUTColorBar.Position = [colbar_pos_x, colbar_pos_y]
-#rend3LUTColorBar.Position = [colbar_pos_x, colbar_pos_y]
 #
 ### Note: resize frame
 ##layout1.SetSplitFraction(0, 0.33333)
