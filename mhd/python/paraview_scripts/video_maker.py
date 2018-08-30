@@ -2,6 +2,7 @@
 
 #### import the simple module from the paraview
 from paraview.simple import *
+import numpy as np
 #### disable automatic camera reset on 'Show'
 paraview.simple._DisableFirstRenderCameraReset()
 
@@ -125,6 +126,7 @@ data.CellArrayStatus = ['rho', 'v1', 'v2', 'v3', 'p', 'b1', 'b2', 'b3', 'trp1', 
 # get animation scene
 # Dont know what this does, something similar to below
 animationScene1 = GetAnimationScene()
+animationScene1.GoToLast()
 
 # update animation scene based on data timesteps
 # This dispays the nb of timesteps
@@ -190,6 +192,8 @@ scalar_bar_thickness = 15
 clip_1display = []
 rendLUT = []
 rendLUTColorBar = []
+rendPWF = []
+# goes to last time step
 for i in range(nb_panels):
     SetActiveView(render_view[i])
     clip_1display.append(clip_display(clip1,render_view[i]))    
@@ -199,6 +203,7 @@ for i in range(nb_panels):
     # show color bar/color legend
     clip_1display[i].SetScalarBarVisibility(render_view[i], True)
     rendLUT.append(GetColorTransferFunction(data_names[i]))
+    rendPWF.append(GetOpacityTransferFunction(data_names[i]))
     # where the color is change for vars
     rendLUT[i].ApplyPreset(colour_wheel[i], True) 
     rendLUTColorBar.append(GetScalarBar(rendLUT[i], render_view[i]))
@@ -210,7 +215,30 @@ for i in range(nb_panels):
     rendLUTColorBar[i].Position = [colbar_pos_x, colbar_pos_y]
     rendLUTColorBar[i].TitleFontSize = 14
     rendLUTColorBar[i].LabelFontSize = 13
+    rendLUTColorBar[i].HorizontalTitle = 1
+    rendLUTColorBar[i].TitleJustification = 'Left'
 
+test = data.CellData.GetArray('v2').GetRange()
+v_range = np.max(abs(np.asarray(test)))
+rendLUT[-1].RescaleTransferFunction(-v_range,v_range)
+
+
+## not using
+## Properties modified on v2LUTColorBar
+#rendLUTColorBar[-1].UseCustomLabels = 1
+#label_values = np.floor(np.linspace(-v_range,v_range, 13))
+#
+## This to round the number nicely for vis
+#OFFSET = 4
+#for j in range(len(label_values)):
+#    digit_count = -len(str(label_values[j]))
+#    print(digit_count, label_values[j])
+#    label_values[j] = round(label_values[j], digit_count+OFFSET)
+#    
+#rendLUTColorBar[-1].CustomLabels = label_values
+
+
+#rendPWF[-1].RescaleTransferFunction(-v_range,v_range)
 #
 ### Note: resize frame
 ##layout1.SetSplitFraction(0, 0.33333)
