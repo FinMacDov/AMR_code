@@ -3,8 +3,14 @@
 #### import the simple module from the paraview
 from paraview.simple import *
 import numpy as np
+import glob
+import img2vid as i2v
 #### disable automatic camera reset on 'Show'
 paraview.simple._DisableFirstRenderCameraReset()
+
+colour_wheel = ['Black-Body Radiation', 'Cool to Warm', 'Cool to Warm (Extended)']
+col_black = [0.0, 0.0, 0.0]
+col_white = [1.0, 1.0, 1.0]
 
 def render_view_func():
     renderView = CreateView('RenderView')
@@ -43,6 +49,21 @@ def render_view_func():
 #    renderView.CameraPosition = [0.0, 1000000000.0, 4700000000.0]
     renderView.CameraFocalPoint = [0.0, 1000000000.0, 0.0]
     renderView.CameraParallelScale = 1405561883.6231568
+    
+    renderView.AxesGrid.XTitle = ''
+    renderView.AxesGrid.YTitle = ''
+
+    renderView.AxesGrid.YLabelColor = col_black
+    renderView.AxesGrid.XLabelColor = col_black
+    renderView.AxesGrid.GridColor = col_black
+    # Properties modified on renderView.AxesGrid
+#    XRANGE_MIN, XRANGE_MAX = -4e8, 4e8 
+#    YRANGE_MIN, YRANGE_MAX  = 0, 2e9
+#    renderView.AxesGrid.XAxisUseCustomLabels = 1
+#    renderView.AxesGrid.XAxisLabels = np.linspace(XRANGE_MIN,XRANGE_MAX, 5)
+#
+#    renderView.AxesGrid.YAxisUseCustomLabels = 1
+#    renderView.AxesGrid.YAxisLabels = np.linspace(YRANGE_MIN,YRANGE_MAX, 11)
 
     return renderView
 
@@ -119,9 +140,20 @@ render_view = []
 render_view.append(render_view_func())
 # loads data
 # create a new 'XML Unstructured Grid Reader'
-data = XMLUnstructuredGridReader(FileName=['/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0000.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0001.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0002.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0003.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0004.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0005.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0006.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0007.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0008.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0009.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0010.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0011.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0012.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0013.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0014.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0015.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0016.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0017.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0018.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0019.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0020.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0021.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0022.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0023.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0024.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0025.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0026.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0027.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0028.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0029.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0030.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0031.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0032.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0033.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0034.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0035.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0036.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0037.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0038.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0039.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0040.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0041.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0042.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0043.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0044.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0045.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0046.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0047.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0048.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0049.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0050.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0051.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0052.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0053.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0054.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0055.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0056.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0057.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0058.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0059.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0060.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0061.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0062.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0063.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0064.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0065.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0066.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0067.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0068.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0069.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0070.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0071.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0072.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0073.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0074.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0075.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0076.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0077.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0078.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0079.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0080.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0081.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0082.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0083.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0084.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0085.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0086.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0087.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0088.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0089.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0090.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0091.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0092.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0093.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0094.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0095.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0096.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0097.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0098.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0099.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0100.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0101.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0102.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0103.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0104.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0105.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0106.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0107.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0108.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0109.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0110.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0111.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0112.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0113.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0114.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0115.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0116.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0117.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0118.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0119.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0120.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0121.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0122.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0123.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0124.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0125.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0126.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0127.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0128.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0129.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0130.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0131.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0132.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0133.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0134.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0135.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0136.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0137.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0138.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0139.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0140.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0141.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0142.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0143.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0144.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0145.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0146.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0147.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0148.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0149.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0150.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0151.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0152.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0153.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0154.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0155.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0156.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0157.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0158.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0159.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0160.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0161.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0162.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0163.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0164.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0165.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0166.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0167.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0168.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0169.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0170.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0171.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0172.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0173.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0174.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0175.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0176.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0177.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0178.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0179.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0180.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0181.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0182.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0183.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0184.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0185.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0186.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0187.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0188.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0189.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0190.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0191.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0192.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0193.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0194.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0195.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0196.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0197.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0198.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0199.vtu', '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_0200.vtu'])
+myPath = '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30' 
+vtuCounter = 24#len(glob.glob1(myPath,"*.vtu"))
+path = []
+for i in range(vtuCounter):
+    string = '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/jet_B30_V30/jet_B30_V30_'
+    number =  str(i).zfill(4)
+    path.append(string + number + '.vtu')
+    
+data = XMLUnstructuredGridReader(FileName=path)
+
 # data names
 data.CellArrayStatus = ['rho', 'v1', 'v2', 'v3', 'p', 'b1', 'b2', 'b3', 'trp1', 'Te', 'Alfv', 'divB', 'beta', 'schrho', 'cs']
+
+data_names = [data.CellArrayStatus[0],data.CellArrayStatus[9],data.CellArrayStatus[2]] 
 
 # get animation scene
 # Dont know what this does, something similar to below
@@ -175,10 +207,6 @@ for i in range(1,nb_panels):
     render_view.append(render_view_func())
     layout1.AssignView(4+i, render_view[i])
 
-data_names = [data.CellArrayStatus[0],data.CellArrayStatus[9],data.CellArrayStatus[2]] 
-colour_wheel = ['Black-Body Radiation', 'Cool to Warm (Extended)', 'Cool to Warm (Extended)']
-col_black = [0.0, 0.0, 0.0]
-col_white = [1.0, 1.0, 1.0]
 # find source
 clip1 = FindSource('Clip1')
 # set active source
@@ -203,6 +231,10 @@ for i in range(nb_panels):
     # show color bar/color legend
     clip_1display[i].SetScalarBarVisibility(render_view[i], True)
     rendLUT.append(GetColorTransferFunction(data_names[i]))
+    # Makes parameter log scale
+    if data_names[i] == 'rho':
+        rendLUT[i].MapControlPointsToLogSpace()
+        rendLUT[i].UseLogScale = 1
     rendPWF.append(GetOpacityTransferFunction(data_names[i]))
     # where the color is change for vars
     rendLUT[i].ApplyPreset(colour_wheel[i], True) 
@@ -217,12 +249,92 @@ for i in range(nb_panels):
     rendLUTColorBar[i].LabelFontSize = 13
     rendLUTColorBar[i].HorizontalTitle = 1
     rendLUTColorBar[i].TitleJustification = 'Left'
+    if data_names[i] == 'v2' or 'v1' or 'b1' or 'b2':
+        small_data = data.CellData.GetArray(data_names[i]).GetRange()
+        v_range = np.max(abs(np.asarray(small_data)))
+        rendLUT[i].RescaleTransferFunction(-v_range, v_range)
 
-test = data.CellData.GetArray('v2').GetRange()
-v_range = np.max(abs(np.asarray(test)))
-rendLUT[-1].RescaleTransferFunction(-v_range,v_range)
+# get animation scene
+animationScene1 = GetAnimationScene()
 
+animationScene1.GoToFirst()
 
+# create a new 'Annotate Time Filter'
+annotateTimeFilter1 = AnnotateTimeFilter(Input=clip1)
+annotateTimeFilter1.Format = 'Time: %g'
+annotateTimeFilter1.Scale = 2.14683
+
+# show data in view
+annotateTimeFilter1Display = Show(annotateTimeFilter1, render_view[-1])
+# trace defaults for the display properties.
+annotateTimeFilter1Display.FontFile = ''
+# Properties modified on annotateTimeFilter1Display
+annotateTimeFilter1Display.WindowLocation = 'LowerRightCorner'
+
+# create a new 'Text'
+text1 = Text()
+# Properties modified on text1
+text1.Text = '2D sim of jet testing'
+text1Display = Show(text1, render_view[0])
+text1Display.FontFile = ''
+
+res = [1892, 1024]
+rat = 1
+# save animation
+#/home/fionnlagh/work/AMR_code/mhd/python/paraview_scripts/testing/images
+SaveAnimation('/home/fionnlagh/work/AMR_code/mhd/python/paraview_scripts/testing/images/test.png', layout1, SaveAllViews=1, ImageResolution=[np.int(res[0]*rat), np.int(res[-1]*rat)], FrameRate=2, FrameWindow=[0, vtuCounter-2])
+
+print('Finished')
+
+#for i in range(nb_panels):
+del render_view
+
+RemoveLayout(layout1)
+
+CreateLayout('Layout #1')
+
+# find source
+annotateTimeFilter1 = FindSource('AnnotateTimeFilter1')
+
+# destroy annotateTimeFilter1
+Delete(annotateTimeFilter1)
+del annotateTimeFilter1
+
+# find source
+clip1 = FindSource('Clip1')
+
+# destroy clip1
+Delete(clip1)
+del clip1
+
+# get active source.
+text1 = GetActiveSource()
+
+# destroy text1
+Delete(text1)
+del text1
+
+# find source
+xMLUnstructuredGridReader1 = FindSource('XMLUnstructuredGridReader1')
+
+# destroy xMLUnstructuredGridReader1
+Delete(xMLUnstructuredGridReader1)
+del xMLUnstructuredGridReader1
+
+# get animation scene
+animationScene1 = GetAnimationScene()
+
+save_directory = '/home/fionnlagh/work/AMR_code/mhd/python/paraview_scripts/testing/images'
+prefix = 'test.'
+fps = 4
+res = (1920, 1080)
+
+i2v.image2video(filepath=save_directory, prefix=prefix, in_extension='png', 
+                output_name=prefix+'video', out_extension='avi', 
+                fps=fps, n_loops=1, delete_images=True, 
+                delete_old_videos=True, res=1080, overlay=False, cover_page=False)
+
+# update animation scene based on data timesteps
 ## not using
 ## Properties modified on v2LUTColorBar
 #rendLUTColorBar[-1].UseCustomLabels = 1
