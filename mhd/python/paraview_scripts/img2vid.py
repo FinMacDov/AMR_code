@@ -1,4 +1,5 @@
 import os
+# Taken from https://github.com/Mallcock1/mhd-slab-3d/blob/master/img2vid.py
 # ======================================
 # Using ffmpeg, we can take the images created for the visualisation and create 
 # a video with the research logos overlayed.
