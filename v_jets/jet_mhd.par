@@ -2,18 +2,19 @@
   base_filename='./data/jet'
   autoconvert      = T
   convert_type     = 'vtuBmpi'
+  nwauxio=6
   saveprim         = T
 /
 
  &savelist
    itsave(1,1)     = 0
    itsave(1,2)     = 0
-   dtsave_dat       = 2.d-4
+   dtsave_dat       = 2.d-2
    ditsave_log     = 100
 /
 
  &stoplist
-   time_max=2.0d-3
+   time_max=2.0d0
    dtmin=1.0d-9
 /
 
@@ -52,7 +53,7 @@
 
  &my_parameters
   amp = 50.0d0 !km s-1
-  B_strength = 60.0d0 !G 
+  plasma_beta = 100.0d0 
   jet_time = 240.0d0 !s
   alpha_val = 80.0d0 
   tilt_pc = 0.0d0!
