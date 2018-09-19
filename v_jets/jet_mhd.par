@@ -1,8 +1,8 @@
 &filelist
-  base_filename='./data/jet'
+  base_filename='./data/jet_m10_'
   autoconvert      = T
   convert_type     = 'vtuBmpi'
-  nwauxio=6
+  nwauxio=9
   saveprim         = T
 /
 
@@ -52,7 +52,7 @@
  /
 
  &my_parameters
-  amp = 50.0d0 !km s-1
+  amp = 20.0d0 
   plasma_beta = 100.0d0 
   jet_time = 240.0d0 !s
   alpha_val = 80.0d0 

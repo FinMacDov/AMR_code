@@ -43,7 +43,7 @@ contains
     mhd_gamma=1.4d0
     rhoj=mhd_gamma
     eta=3.d0
-    vj=0.0d0!10.d0
+    vj=10.0d0
   end subroutine initglobaldata_usr
 
   subroutine initonegrid_usr(ixG^L,ix^L,w,x)
@@ -53,25 +53,34 @@ contains
     integer, intent(in) :: ixG^L, ix^L
     double precision, intent(in) :: x(ixG^S,1:ndim)
     double precision, intent(inout) :: w(ixG^S,1:nw)
+    double precision :: magtotal(ix^S,1:ndir), B_sq(ix^S)
+    integer :: idir
 
     {^IFONED call mpistop("This is a multi-D MHD problem") }
 
     BB2 = dsqrt(two/Plasma_beta)
-!    print*, two*(one/(mhd_gamma-one))/Plasma_beta
+    w(ix^S,mag(1))=zero
+    w(ix^S,mag(2))=BB2
+    do idir=1,ndir
+      if(B0field) then
+        magtotal(ix^S,idir)=w(ix^S,mag(idir))+block%B0(ix^S,idir,0)
+      else
+        magtotal(ix^S,idir)=w(ix^S,mag(idir))
+      endif
+    end do
+    ! B^2
+    B_sq(ix^S)=sum((magtotal(ix^S,:))**2,dim=ndim+1)
+
     where(dabs(x(ix^S,1))<0.05d0.and.x(ix^S,2)<0.00d0)
        w(ix^S,rho_)=rhoj
        w(ix^S,mom(1))=0.0d0
        w(ix^S,mom(2))=rhoj*vj
-       w(ix^S,e_)=one/(mhd_gamma-one)+0.5d0*rhoj*vj**2.0d0+0.5d0*BB2**2.0d0
-       w(ix^S,mag(1))=zero
-       w(ix^S,mag(2))=BB2
+       w(ix^S,e_)=one/(mhd_gamma-one)+0.5d0*rhoj*vj**2.0d0+0.5d0*B_sq(ix^S)
     else where
        w(ix^S,rho_) = rhoj/eta
-       w(ix^S,e_) = one/(mhd_gamma-one)+0.5d0*BB2**2.0d0
+       w(ix^S,e_) = one/(mhd_gamma-one)+0.5d0*B_sq(ix^S)
        w(ix^S,mom(1)) = 0.0d0
        w(ix^S,mom(2)) = 0.0d0
-       w(ix^S,mag(1))=zero
-       w(ix^S,mag(2))=BB2
     end where
 
   end subroutine initonegrid_usr
@@ -79,14 +88,28 @@ contains
   subroutine specialbound_usr(qt,ixG^L,ixB^L,iB,w,x)
 
     ! special boundary types, user defined
-
     integer, intent(in) :: ixG^L, ixB^L, iB
     double precision, intent(in) :: qt, x(ixG^S,1:ndim)
     double precision, intent(inout) :: w(ixG^S,1:nw)
     integer :: ixI^L, ix2
+    double precision :: magtotal(ixG^S,1:ndir), B_sq(ixG^S)
+    integer :: idir
+
+    w(ixG^S,mag(1))=zero
+    w(ixG^S,mag(2))=BB2
+    do idir=1,ndir
+      if(B0field) then
+        magtotal(ixG^S,idir)=w(ixG^S,mag(idir))+block%B0(ixG^S,idir,0)
+      else
+        magtotal(ixG^S,idir)=w(ixG^S,mag(idir))
+      endif
+    end do
+    ! B^2
+    B_sq(ixG^S)=sum((magtotal(ixG^S,:))**2,dim=ndim+1)
 
     ixImin^DD=ixBmin^DD;
     ixImax^DD=ixBmin^D-1+nghostcells^D%ixImax^DD=ixBmax^DD;
+
     ! Outflow:
     do ix2=ixImin2,ixImax2
        w(ixImin1:ixImax1,ix2,rho_) = w(ixImin1:ixImax1,ixImax2+1,rho_) 
@@ -100,12 +123,8 @@ contains
        w(ixI^S,rho_)=rhoj
        w(ixI^S,mom(1))=zero
        w(ixI^S,mom(2))=rhoj*vj
-       w(ixI^S,e_)=one/(mhd_gamma-one)+0.5d0*rhoj*vj**2.0d0+0.5*BB2**2.0d0
-       w(ixI^S,mag(1))=zero
-       w(ixI^S,mag(2))=BB2
+       w(ixI^S,e_)=one/(mhd_gamma-one)+0.5d0*rhoj*vj**2.0d0+0.5*B_sq(ixI^S)
     else where
-       w(ixI^S,mag(1))=zero
-       w(ixI^S,mag(2))=BB2
        ! Reflective:
        !   w(ixI^S,rho_) = w(ixImin1:ixImax1,ixImax2+nghostcells:ixImax2+1:-1,rho_) 
        !   w(ixI^S,e_) = w(ixImin1:ixImax1,ixImax2+nghostcells:ixImax2+1:-1,e_) 
@@ -138,11 +157,15 @@ contains
     double precision:: kk,kk0,grhomax,kk1
     integer         :: idims
     logical, save   :: firstrun=.true.
+
+    w(ixO^S,nw+1) = w(ixO^S,e_)
+    w(ixO^S,nw+2) = w(ixO^S,mom(1))
+    w(ixO^S,nw+3) = w(ixO^S,mom(2))
     ! output temperature
     wlocal(ixI^S,1:nw)=w(ixI^S,1:nw)
     ! output temperature
     call mhd_get_pthermal(wlocal,x,ixI^L,ixO^L,pth)
-    w(ixO^S,nw+1)=pth(ixO^S)/w(ixO^S,rho_)*unit_temperature
+    w(ixO^S,nw+4)=pth(ixO^S)/w(ixO^S,rho_)
 
     do idir=1,ndir
       if(B0field) then
@@ -155,14 +178,14 @@ contains
     B2(ixO^S)=sum((Btotal(ixO^S,:))**2,dim=ndim+1)
 
     ! output Alfven wave speed B/sqrt(rho)
-    w(ixO^S,nw+2)=unit_velocity*dsqrt(B2(ixO^S)/w(ixO^S,rho_))
+    w(ixO^S,nw+5)=dsqrt(B2(ixO^S)/w(ixO^S,rho_))
 
     ! output divB1
     call get_normalized_divb(wlocal,ixI^L,ixO^L,divb)
-    w(ixO^S,nw+3)=divb(ixO^S)
+    w(ixO^S,nw+6)=divb(ixO^S)
 
     ! output the plasma beta p*2/B**2
-    w(ixO^S,nw+4)=pth(ixO^S)*two/B2(ixO^S)
+    w(ixO^S,nw+7)=pth(ixO^S)*two/B2(ixO^S)
 !    if(mype==0) print*, 'pressure', pth(ixO^S) 
 !    if (mype==0) print*, 'btotal', B2(ixO^S) 
 
@@ -171,9 +194,9 @@ contains
      do idims=1,ndim
        select case(typegrad)
        case("central")
-         call gradient(rho*unit_density,ixI^L,ixO^L,idims,drho)
+         call gradient(rho,ixI^L,ixO^L,idims,drho)
        case("limited")
-         call gradientS(rho*unit_density,ixI^L,ixO^L,idims,drho)
+         call gradientS(rho,ixI^L,ixO^L,idims,drho)
        end select
        gradrho(ixO^S)=gradrho(ixO^S)+drho(ixO^S)**2.0d0
      enddo
@@ -184,12 +207,12 @@ contains
      kk1=1.0d0
 !     grhomax=1.d-8
 
-     grhomax=MAXVAL(gradrho(ixO^S))
+     grhomax=100.0d0!MAXVAL(gradrho(ixO^S))
 
   ! putting the schlierplot of density in nwauxio=1
-     w(ixO^S,nw+5)=dexp(-kk*(gradrho(ixO^S)-kk0*grhomax)/(kk1*grhomax-kk0*grhomax))
+     w(ixO^S,nw+8)=dexp(-kk*(gradrho(ixO^S)-kk0*grhomax)/(kk1*grhomax-kk0*grhomax))
    
-     w(ixO^S,nw+6)=unit_velocity*dsqrt(mhd_gamma*pth(ixO^S)/w(ixO^S,rho_))
+     w(ixO^S,nw+9)=dsqrt(mhd_gamma*pth(ixO^S)/w(ixO^S,rho_))
 
   end subroutine specialvar_output
 
@@ -198,7 +221,7 @@ contains
     use mod_global_parameters
     character(len=*) :: varnames
 
-    varnames='Te Alfv divB beta schrho cs'
+    varnames='e m1 m2 Te Alfv divB beta schrho cs'
 
   end subroutine specialvarnames_output
 
