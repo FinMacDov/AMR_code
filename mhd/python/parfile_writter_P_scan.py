@@ -3,6 +3,7 @@
 Created on Mon Aug 13 16:36:22 2018
 
 @author: fionnlagh
+python3 /home/smp16fm/work/AMR_code/mhd/python/parfile_writter_P_scan.py 
 """
 import os
 path = "/home/smp16fm/work/AMR_code/solar_atmos/solar_atmosphere_2.5D/sharc_parfiles"
@@ -69,7 +70,7 @@ atmos_list = {'Te_profile=': "'C7'",
               'npts=': '8000'}
 my_parameters = {'amp =': '50.0d0 !km s-1',
                  'B_strength =': '60.0d0 !G',
-                 'jet_time =': '240.0d0 !s',
+                 'jet_time =': '300.0d0 !s',
                  'alpha_val =': '0.0d0',
                  'tilt_pc =': '0.0d0'}
 my_switches = {'tanh_profile=': '.T.',
@@ -81,8 +82,8 @@ my_switches = {'tanh_profile=': '.T.',
                'driver_random =': '.F.',
                'driver_kuz =': '.F.',
                'driver_injetion =': '.F.',
-               'jet_cont =': '.F.',
-               'jet_switch_on_off =': '.T.',
+               'jet_cont =': '.T.',
+               'jet_switch_on_off =': '.F.',
                'jet_skewed_guass =': '.F.'}
 template = {'&filelist': filelist,
             '&savelist': savelist,
@@ -103,8 +104,9 @@ rmem = '2G'
 email = 'fmackenziedover1@sheffield.ac.uk'
 
 # Input of changing vaibles.
-B = ['30', '40', '50', '60', '70', '80']
-V = ['30', '40', '50', '60']
+B = ['50']
+V = ['50']
+P = ['160','200','240','280','320','360']
 save_path = '/shared/mhd_jet1/User/smp16fm/sims/jet/'
 qsub_run_path = 'sharc_parfiles/'
 excute_path = '/home/smp16fm/work/AMR_code/solar_atmos/solar_atmosphere_2.5D/amrvac'
@@ -113,29 +115,31 @@ file_bash = open('multi_qsub', 'w')
 file_bash.write('#!/bin/bash\n')
 for bi in range(len(B)):
     for vi in range(len(V)):
-        if os.path.isdir('B'+B[bi]+'/V'+V[vi]+'/') is False:
-            os.makedirs('B'+B[bi]+'/V'+V[vi]+'/')
-
-        if os.path.isdir(save_path+'/jet_B'+B[bi]+'_V'+V[vi]) is False:
-            os.makedirs(save_path+'/jet_B'+B[bi]+'_V'+V[vi])
-
-        file = open('B'+B[bi]+'/V'+V[vi]+'/B'+B[bi]+'_V'+V[vi]+'.par', 'w')
-        # create submitters
-        file_sub = open('B'+B[bi]+'/V'+V[vi]+'/sub_B'+B[bi]+'_V'+V[vi], 'w')
-        file_sub.write('#!/bin/bash \n#$ -l h_rt=' + run_time+'\n' +
-                       '#$ -pe mpi ' + nb_cores + '\n#$ -l rmem='
-                       + rmem +'\n#$ -m bea' + '\n#$ -M ' + email + '\n#$ -j y'
-                       + '\n\nmodule load mpi/openmpi/2.1.1/gcc-6.2' 
-                       +'\n\nmpirun -np ' +nb_cores+' '+excute_path+' -i '+qsub_run_path+'B'+B[bi]+'/V'+V[vi]+'/B'+B[bi]+'_V'+V[vi]+'.par')
-        file_bash.write('qsub sharc_parfiles/B'+B[bi]+'/V'+V[vi]+'/sub_B'+B[bi]+'_V'+V[vi]+' &\n')
-        #creates file path
-        template['&filelist']['base_filename='] = "'"+save_path+'jet_B'+B[bi]+'_V'+V[vi]+'/jet_B'+B[bi]+'_V'+V[vi]+"_'"
-        template['&my_parameters']['B_strength ='] = B[bi]+'.0d0  !G'
-        template['&my_parameters']['amp ='] = V[vi]+'.0d0  !km s-1'
-        for i in template:
-            file.write(str(i)+"\n")
-            for j in template[i]:
-                file.write(str(j)+str(template[i][j])+"\n")
-            file.write('/ \n \n')
-        file.close()
+        for pi in range(len(P)):
+            if os.path.isdir('B'+B[bi]+'/V'+V[vi]+'/P'+P[pi]+'/') is False:
+                os.makedirs('B'+B[bi]+'/V'+V[vi]+'/P'+P[pi]+'/')
+    
+            if os.path.isdir(save_path+'/jet_B'+B[bi]+'_V'+V[vi]+'P'+P[pi]) is False:
+                os.makedirs(save_path+'/jet_B'+B[bi]+'_V'+V[vi]+'P'+P[pi])
+    
+            file = open('B'+B[bi]+'/V'+V[vi]+'/P'+P[pi]+'/B'+B[bi]+'_V'+V[vi]+'_P'+P[pi]+'.par', 'w')
+            # create submitters
+            file_sub = open('B'+B[bi]+'/V'+V[vi]+'/P'+P[pi]+'/sub_B'+B[bi]+'_V'+V[vi]+'_P'+P[pi], 'w')
+            file_sub.write('#!/bin/bash \n#$ -l h_rt=' + run_time+'\n' +
+                           '#$ -pe mpi ' + nb_cores + '\n#$ -l rmem='
+                           + rmem +'\n#$ -m bea' + '\n#$ -M ' + email + '\n#$ -j y'
+                           + '\n\nmodule load mpi/openmpi/2.1.1/gcc-6.2' 
+                           +'\n\nmpirun -np ' +nb_cores+' '+excute_path+' -i '+qsub_run_path+'B'+B[bi]+'/V'+V[vi]+'/P'+P[pi]+'/B'+B[bi]+'_V'+V[vi]+'_P'+P[pi]+'.par')
+            file_bash.write('qsub sharc_parfiles/B'+B[bi]+'/V'+V[vi]+'/P'+P[pi]+'/sub_B'+B[bi]+'_V'+V[vi]+'_P'+P[pi]+' &\n')
+            #creates file path
+            template['&filelist']['base_filename='] = "'"+save_path+'jet_B'+B[bi]+'_V'+V[vi]+'P'+P[pi]+'/jet_B'+B[bi]+'_V'+V[vi]+'_P'+P[pi]+"_'"
+            template['&my_parameters']['B_strength ='] = B[bi]+'.0d0  !G'
+            template['&my_parameters']['amp ='] = V[vi]+'.0d0  !km s-1'
+            template['&my_parameters']['jet_time ='] = P[pi]+'.0d0 !s'
+            for i in template:
+                file.write(str(i)+"\n")
+                for j in template[i]:
+                    file.write(str(j)+str(template[i][j])+"\n")
+                file.write('/ \n \n')
+            file.close()
 file_bash.close()
