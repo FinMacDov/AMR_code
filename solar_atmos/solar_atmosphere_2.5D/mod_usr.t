@@ -287,9 +287,9 @@ contains
     double precision :: res,delta_y
     integer :: ix^D,na,i
     logical, save :: first=.true.
-    double precision :: width, A, y0,x0
-    double precision:: gradp(ixG^T),dp(ixG^T)
-    integer         :: idims
+    double precision :: width,A,y0,x0,deltax,jet_w
+    double precision:: gradp(ixG^T),dp(ixG^T),rho_j,j_origx
+    integer         :: idims, ind1, ind2
 
     if(first)then
       if(mype==0) then
@@ -390,6 +390,38 @@ contains
       y0 =0.7d0 !<=y origin
       w(ixI^S,mom(2))= A*dexp(-((x(ixI^S,1)-x0)**2+(x(ixI^S,2)-y0)**2)/&
       width**2)
+      endif
+
+     if(jet_switch_on_off) then
+      !to drive jet
+      jet_w = 3.5d7/2.0d0/unit_length !< (350 km)/unit_length
+      A = amp*1.0d5/unit_velocity
+      deltax = (jet_w)/3.d0 !< This defines the width of guass dist.
+                                   !< divided by 3 as guass dist = 0 
+                                   !< after 3 sigma. 
+      j_origx = (abs(xprobmax1)-abs(xprobmin1))/2.0d0
+      rho_j = 1.0d-9/unit_density
+      do ind1=ixOmin1,ixOmax1
+        do ind2=ixOmin2,ixOmax2
+          if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w .and. x(ind^D,2)<0.0d0) then
+            w(ind^D,rho_) = w(ind^D,rho_) +(rho_j-w(ind^D,rho_))*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2) 
+            if(mhd_n_tracer>0) then
+              w(ind^D,tracer(1))=100.0d0
+            endif
+              if(tilt_pc>0.0d0) then 
+                w(ind^D,mom(1))=(tilt_pc)*A*&
+                               dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
+                w(ind^D,mom(2))= (1.0d0-tilt_pc)*A*&
+                                 dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
+              else
+                w(ind^D,mom(1))=0.0d0
+                w(ind^D,mom(2))= A*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
+              endif
+            else
+              w(ind^D,mom(2))=zero
+            endif
+        end do
+      end do
       endif
 
    ! Set tracer
@@ -552,7 +584,7 @@ contains
       do ind1=ixOmin1,ixOmax1
         do ind2=ixOmin2,ixOmax2
           if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w) then
-            w(ind^D,rho_) = rho_j 
+            w(ind^D,rho_) = rbc(1)+(rho_j-rbc(1))*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2) 
             if(mhd_n_tracer>0) then
               w(ind^D,tracer(1))=100.0d0
             endif
@@ -590,7 +622,7 @@ contains
       do ind1=ixOmin1,ixOmax1
         do ind2=ixOmin2,ixOmax2
           if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w .and. x(ind^D,2)<=jet_h) then
-            w(ind^D,rho_) = rho_j 
+            w(ind^D,rho_) = w(ind^D,rho_) +(rho_j-w(ind^D,rho_))*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2) 
             if(mhd_n_tracer>0) then
               w(ind^D,tracer(1))=100.0d0
             endif
