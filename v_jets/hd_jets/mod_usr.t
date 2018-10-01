@@ -47,7 +47,7 @@ contains
     driv_trw = jet_width ! transitio width fro driver
     PoI = 0.5d0*(-jet_width+(jet_width-driv_trw)) ! pnt of inflection
     smoothness = 0.1d0*driv_trw ! smoothness of tanh driver
-    j_h = 0.5d0 ! jet height 
+    j_h = 0.0d0 ! jet height 
     tilt = 0.25d0*dpi
 
   end subroutine initglobaldata_usr
@@ -99,17 +99,17 @@ contains
 
       ! LHS of jet
       where(x(ix^S,1)>-jet_width .and. x(ix^S,1) <= 0.0d0 .and. x(ix^S,2)<j_h)
-        w(ix^S,rho_)=rhoj
-        w(ix^S,mom(1))=dsin(tilt)*rhoj*(vj*0.5d0)*(1.0d0+dtanh((x(ix^S,1)-PoI)/smoothness))
-        w(ix^S,mom(2))=dcos(tilt)*rhoj*(vj*0.5d0)*(1.0d0+dtanh((x(ix^S,1)-PoI)/smoothness))
-        w(ix^S,e_)=one/(hd_gamma-one)+0.5d0*rhoj*((dsin(tilt)*(vj*0.5d0)*(1.0d0+dtanh((x(ix^S,1)-PoI)/smoothness)))**2.0d0 +(dcos(tilt)*(vj*0.5d0)*(1.0d0+dtanh((x(ix^S,1)-PoI)/smoothness)))**2.0d0)
+        w(ix^S,rho_)=rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0+dtanh((x(ix^S,1)-PoI)/smoothness))
+        w(ix^S,mom(1))=dsin(tilt)*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0+dtanh((x(ix^S,1)-PoI)/smoothness)))*(vj*0.5d0)*(1.0d0+dtanh((x(ix^S,1)-PoI)/smoothness))
+        w(ix^S,mom(2))=dcos(tilt)*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0+dtanh((x(ix^S,1)-PoI)/smoothness)))*(vj*0.5d0)*(1.0d0+dtanh((x(ix^S,1)-PoI)/smoothness))
+        w(ix^S,e_)=one/(hd_gamma-one)+0.5d0*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0+dtanh((x(ix^S,1)-PoI)/smoothness)))*((dsin(tilt)*(vj*0.5d0)*(1.0d0+dtanh((x(ix^S,1)-PoI)/smoothness)))**2.0d0 +(dcos(tilt)*(vj*0.5d0)*(1.0d0+dtanh((x(ix^S,1)-PoI)/smoothness)))**2.0d0)
       end where
       ! RHS of jet
       where(x(ix^S,1)<jet_width .and. x(ix^S,1) >= 0.0d0 .and. x(ix^S,2)<j_h)
-        w(ix^S,rho_)=rhoj
-        w(ix^S,mom(1))=dsin(tilt)*rhoj*(vj*0.5d0)*(1.0d0-dtanh((x(ix^S,1)+PoI)/smoothness))
-        w(ix^S,mom(2))=dcos(tilt)*rhoj*(vj*0.5d0)*(1.0d0-dtanh((x(ix^S,1)+PoI)/smoothness))
-        w(ix^S,e_)=one/(hd_gamma-one)+0.5d0*rhoj*((dsin(tilt)*(vj*0.5d0)*(1.0d0-dtanh((x(ix^S,1)+PoI)/smoothness)))**2.0d0 &
+        w(ix^S,rho_)=rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((x(ix^S,1)+PoI)/smoothness))
+        w(ix^S,mom(1))=dsin(tilt)*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((x(ix^S,1)+PoI)/smoothness)))*(vj*0.5d0)*(1.0d0-dtanh((x(ix^S,1)+PoI)/smoothness))
+        w(ix^S,mom(2))=dcos(tilt)*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((x(ix^S,1)+PoI)/smoothness)))*(vj*0.5d0)*(1.0d0-dtanh((x(ix^S,1)+PoI)/smoothness))
+        w(ix^S,e_)=one/(hd_gamma-one)+0.5d0*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((x(ix^S,1)+PoI)/smoothness)))*((dsin(tilt)*(vj*0.5d0)*(1.0d0-dtanh((x(ix^S,1)+PoI)/smoothness)))**2.0d0 &
                    +(dcos(tilt)*(vj*0.5d0)*(1.0d0-dtanh((x(ix^S,1)+PoI)/smoothness)))**2.0d0)
       end where
     endif
@@ -176,17 +176,17 @@ contains
       w(ixI^S,mom(2)) = 0.0d0
       ! LHS of jet
       where(x(ixI^S,1)>-jet_width .and. x(ixI^S,1) <= 0.0d0)
-        w(ixI^S,rho_)=rhoj
-        w(ixI^S,mom(1))=dsin(tilt)*rhoj*(vj*0.5d0)*(1.0d0+dtanh((x(ixI^S,1)-PoI)/smoothness))
-        w(ixI^S,mom(2))=dcos(tilt)*rhoj*(vj*0.5d0)*(1.0d0+dtanh((x(ixI^S,1)-PoI)/smoothness))
-        w(ixI^S,e_)=one/(hd_gamma-one)+0.5d0*rhoj*((dsin(tilt)*(vj*0.5d0)*(1.0d0+dtanh((x(ixI^S,1)-PoI)/smoothness)))**2.0d0+(dcos(tilt)*(vj*0.5d0)*(1.0d0+dtanh((x(ixI^S,1)-PoI)/smoothness)))**2.0d0)
+        w(ixI^S,rho_)=rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0+dtanh((x(ixI^S,1)-PoI)/smoothness))
+        w(ixI^S,mom(1))=dsin(tilt)*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0+dtanh((x(ixI^S,1)-PoI)/smoothness)))*(vj*0.5d0)*(1.0d0+dtanh((x(ixI^S,1)-PoI)/smoothness))
+        w(ixI^S,mom(2))=dcos(tilt)*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0+dtanh((x(ixI^S,1)-PoI)/smoothness)))*(vj*0.5d0)*(1.0d0+dtanh((x(ixI^S,1)-PoI)/smoothness))
+        w(ixI^S,e_)=one/(hd_gamma-one)+0.5d0*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0+dtanh((x(ixI^S,1)-PoI)/smoothness)))*((dsin(tilt)*(vj*0.5d0)*(1.0d0+dtanh((x(ixI^S,1)-PoI)/smoothness)))**2.0d0+(dcos(tilt)*(vj*0.5d0)*(1.0d0+dtanh((x(ixI^S,1)-PoI)/smoothness)))**2.0d0)
       end where
       ! RHS of jet
       where(x(ixI^S,1)<jet_width .and. x(ixI^S,1) >= 0.0d0)
-        w(ixI^S,rho_)=rhoj
-        w(ixI^S,mom(1))=dsin(tilt)*rhoj*(vj*0.5d0)*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness))
-        w(ixI^S,mom(2))=dcos(tilt)*rhoj*(vj*0.5d0)*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness))
-        w(ixI^S,e_)=one/(hd_gamma-one)+0.5d0*rhoj*((dcos(tilt)*(vj*0.5d0)*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness)))**2.0d0+(dsin(tilt)*(vj*0.5d0)*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness)))**2.0d0)
+        w(ixI^S,rho_)=rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness))
+        w(ixI^S,mom(1))=dsin(tilt)*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness)))*(vj*0.5d0)*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness))
+        w(ixI^S,mom(2))=dcos(tilt)*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness)))*(vj*0.5d0)*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness))
+        w(ixI^S,e_)=one/(hd_gamma-one)+0.5d0*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness)))*((dcos(tilt)*(vj*0.5d0)*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness)))**2.0d0+(dsin(tilt)*(vj*0.5d0)*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness)))**2.0d0)
       end where
     endif
 
@@ -287,3 +287,4 @@ contains
   end subroutine specialrefine_grid
 
 end module mod_usr
+
