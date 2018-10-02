@@ -89,7 +89,7 @@ def submitter_creation(master_dir, par_path, par_name, nb_cores, email, rmem, ru
                    '#$ -pe mpi ' + nb_cores + '\n#$ -l rmem='
                    + rmem +'\n#$ -m bea' + '\n#$ -M ' + email + '\n#$ -j y'
                    + '\n\nmodule load mpi/openmpi/2.1.1/gcc-6.2' 
-                   +'\n\nmpirun -np ' +nb_cores+' '+master_dir+'/amrvac -i '+par_path+par_name+'.par')
+                   +'\n\nmpirun -np ' +nb_cores+' '+master_dir+'/amrvac -i .'+par_path+'/'+par_name+'.par')
     file_sub.close() 
 
 
@@ -108,17 +108,17 @@ nb_cores = '24'
 rmem = '2G'
 email = 'fmackenziedover1@sheffield.ac.uk'
 
-jet_angle = ['0.0']#,'0.1','0.5','1.0','5.0','10.0','15.0','20.0','25.0','30.0']
+jet_angle = ['0.0','0.1','0.5','1.0','5.0','10.0','15.0','20.0','25.0','30.0']
 
 qsub_names_list = []
 for jj in range(len(jet_angle)):
-    par_name = 'HD_jet_M'+template['&my_parameters']['jet_speed ='][0:1]+'_a'+jet_angle[jj]
+    par_name = 'jet_M'+template['&my_parameters']['jet_speed ='][0:2]+'_a'+jet_angle[jj]
     par_path =  '/parfiles/jet_a'+jet_angle[jj]
     sav_path = '/jet_a'+jet_angle[jj]
     template['&my_parameters']['tilt_deg ='] = jet_angle[jj]+'d0'
     parfile_creation(master_dir, par_path, par_name, sav_path, sav_loc, template)
     submitter_creation(master_dir, par_path, par_name, nb_cores, email, rmem, run_time)
-    qsub_names_list.append(par_path+'/sub_'+par_name)
+    qsub_names_list.append('.'+par_path+'/sub_'+par_name)
 
 bash_writter(qsub_names_list)
 
