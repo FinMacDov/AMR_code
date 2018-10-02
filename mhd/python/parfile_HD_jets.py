@@ -10,69 +10,61 @@ master_dir = '/home/smp16fm/work/AMR_code/v_jets/hd_jets'
 os.chdir(master_dir)
 
 # create parfile info
-filelist = OrderedDict({'base_filename=': "'test'",
-            'saveprim=': '.T.',
-            'autoconvert=': '.T.',
-            'convert_type=': "'vtuBmpi'",
-            'slice_type=': "'csv'",
-            'nwauxio=': '6'})
+filelist = OrderedDict([('base_filename=', "'test'"),
+            ('saveprim=', '.T.'),
+            ('autoconvert=', '.T.'),
+            ('convert_type=', "'vtuBmpi'"),
+            ('slice_type=', "'csv'"),
+            ('nwauxio=', '6')])
 
-savelist = OrderedDict({'itsave(1,1)=': '0',
-            'itsave(1,2)=': '0',
-            'ditsave_log=': '100',
-            'dtsave_dat=': '1.d-2',
-            'dtsave(3)=': '1.d-2 !<= slice output saved',
-            'slicedir(1)=': '1    !<= data is taken perp to dim select',
-            'slicecoord(1)=': '0.0d0 !<= pt of origin of slice.'})
-stoplist = OrderedDict({'dtmin=': '1.0d-9',
-            'time_max=': '0.6d0'})
-methodlist = OrderedDict({'time_integrator=': "'threestep'",
-              'flux_scheme=': '20*'+"'hllc'",
-              'limiter=':'20*'+"'cada3'"})
-boundlist = OrderedDict({'nghostcells=': '2',
-             'typeboundary_min1 =': '4*'+"'cont'",
-             'typeboundary_max1 =': '4*'+"'cont'",
-             'typeboundary_min2 =': '4*'+"'special'",
-             'typeboundary_max2 =': '4*'+"'cont'"})
-meshlist = OrderedDict({'refine_max_level=': '4',
-            'refine_threshold=': '20*0.5d0',
-            'derefine_ratio=': '20*1.d0/2.d0',
-            'block_nx1=': '20',
-            'block_nx2=': '20',
-            'domain_nx1=': '240',
-            'domain_nx2=': '60',
-            'iprob=': '1',
-            'xprobmin1=': '-0.5d0',
-            'xprobmax1=': '3.0d0',
-            'xprobmin2=': '0.0d0',
-            'xprobmax2=': '1.5d0'})
-paramlist = OrderedDict({'slowsteps=': '1000',
-             'courantpar=': '0.6d0'})
-my_parameters = OrderedDict({'jet_speed =': '5.0d0',
-                 'plasma_beta =': '100.0d0 ',
-                 'tilt_deg =': '0.0d0',
-                 'jet_width =': '0.05d0',
-                 'driv_tanh =': '.T.',
-                 'driv_gaussian =':'.F.',
-                 'orig_setup =': '.F.'})
+savelist = OrderedDict([('itsave(1,1)=', '0'),
+            ('itsave(1,2)=', '0'),
+            ('ditsave_log=', '100'),
+            ('dtsave_dat=', '1.d-2'),
+            ('dtsave(3)=', '1.d-2 !<= slice output saved'),
+            ('slicedir(1)=', '1    !<= data is taken perp to dim select'),
+            ('slicecoord(1)=', '0.0d0 !<= pt of origin of slice.')])
+stoplist = OrderedDict([('dtmin=', '1.0d-9'),
+            ('time_max=', '0.6d0')])
+methodlist = OrderedDict([('time_integrator=', "'threestep'"),
+              ('flux_scheme=', '20*'+"'hllc'"),
+              ('limiter=','20*'+"'cada3'")])
+boundlist = OrderedDict([('nghostcells=', '2'),
+             ('typeboundary_min1 =', '4*'+"'cont'"),
+             ('typeboundary_max1 =', '4*'+"'cont'"),
+             ('typeboundary_min2 =', '4*'+"'special'"),
+             ('typeboundary_max2 =', '4*'+"'cont'")])
+meshlist = OrderedDict([('refine_max_level=', '4'),
+            ('block_nx1=', '20'),
+            ('block_nx2=', '20'),
+            ('domain_nx1=', '240'),
+            ('domain_nx2=', '60'),
+            ('iprob=', '1'),
+            ('xprobmin1=', '-0.5d0'),
+            ('xprobmax1=', '3.0d0'),
+            ('xprobmin2=', '0.0d0'),
+            ('xprobmax2=', '1.5d0'),
+            ('refine_threshold=', '20*0.5d0'),
+            ('derefine_ratio=', '20*1.d0/2.d0')])
 
-#filelist = collections.OrderedDict(filelist)
-#savelist = collections.OrderedDict(savelist)
-#stoplist = collections.OrderedDict(stoplist)
-#methodlist = collections.OrderedDict(methodlist)
-#boundlist = collections.OrderedDict(boundlist)
-#meshlist = collections.OrderedDict(meshlist)
-#paramlist = collections.OrderedDict(paramlist)
-#my_parameters = collections.OrderedDict(my_parameters)
+paramlist = OrderedDict([('slowsteps=', '1000'),
+             ('courantpar=', '0.6d0')])
+my_parameters = OrderedDict([('jet_speed =', '5.0d0'),
+                 ('plasma_beta =', '100.0d0 '),
+                 ('tilt_deg =', '0.0d0'),
+                 ('jet_width =', '0.05d0'),
+                 ('driv_tanh =', '.T.'),
+                 ('driv_gaussian =','.F.'),
+                 ('orig_setup =', '.F.')])
 
-template = OrderedDict({'&filelist': filelist,
-            '&savelist': savelist,
-            '&stoplist': stoplist,
-            '&methodlist': methodlist,
-            '&boundlist': boundlist,
-            '&meshlist': meshlist,
-            '&paramlist': paramlist,
-            '&my_parameters': my_parameters})
+template = OrderedDict([('&filelist', filelist),
+            ('&savelist', savelist),
+            ('&stoplist', stoplist),
+            ('&methodlist', methodlist),
+            ('&boundlist', boundlist),
+            ('&meshlist', meshlist),
+            ('&paramlist', paramlist),
+            ('&my_parameters', my_parameters)])
 
 def parfile_creation(master_dir, par_path, par_name, sav_path, sav_loc, template):
     # Creates dirs for parfile and qsubs
