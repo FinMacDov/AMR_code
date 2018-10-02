@@ -98,21 +98,19 @@ def bash_writter(qsub_names_list):
     file_bash.close()
 
 
+master_dir = '/home/smp16fm/work/AMR_code/v_jets/hd_jets'
 # corosponding submitters.
 run_time = '10:00:00'
 nb_cores = '24'
 rmem = '2G'
 email = 'fmackenziedover1@sheffield.ac.uk'
 
-master_dir = "/home/smp16fm/work/AMR_code/solar_atmos/solar_atmosphere_2.5D"
-par_path = 
-sav_loc = 
-
 jet_angle = ['0.0']#,'0.1','0.5','1','5','10','15','20','25','30']
 
 qsub_names_list = []
 for jj in range(len(jet_angle)):
     par_name = 'HD_jet_M'+template['&my_parameters']['jet_speed ='][0:1]+'_a'+jet_angle
+    par_path =  '/parfiles/jet_a'+jet_angle[jj]
     template['&my_parameters']['tilt_deg ='] = jet_angle[jj]+'.0d0'
     parfile_creation(master_dir, par_path, sav_loc, par_name, template)
     submitter_creation(master_dir, par_path, par_name, nb_cores, email, rmem, run_time)
