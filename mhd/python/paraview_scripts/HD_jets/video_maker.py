@@ -161,11 +161,10 @@ def movie_maker(mini_path, B, V, mini_sav_loc):
     data = XMLUnstructuredGridReader(FileName=path)
     
     # data names
-    data.CellArrayStatus = ['rho', 'v1', 'v2', 'v3', 'p', 'b1', 'b2', 'b3', 'trp1', 'Te', 'Alfv', 'divB', 'beta', 'schrho', 'cs']
+    data.CellArrayStatus = ['Te', 'cs', 'e', 'm1', 'm2', 'p', 'rho', 'schrho', 'v1', 'v2']
     # first set of vids
-#    data_names = [data.CellArrayStatus[0],data.CellArrayStatus[9],data.CellArrayStatus[2]] 
     # 2nd set of names for vids
-    data_names = [data.CellArrayStatus[4],data.CellArrayStatus[8],data.CellArrayStatus[13]]    
+    data_names = [data.CellArrayStatus[0],data.CellArrayStatus[1],data.CellArrayStatus[3]]    
     # get animation scene
     # Dont know what this does, something similar to below
     animationScene1 = GetAnimationScene()
@@ -292,76 +291,54 @@ def movie_maker(mini_path, B, V, mini_sav_loc):
     if os.path.isdir(sav_loc+'/jet_B'+B_str+'_V'+V_str) is False:
         os.makedirs(sav_loc+'/jet_B'+B_str+'_V'+V_str)
     # save animation
-    SaveAnimation(sav_loc+'/jet_B'+B_str+'_V'+V_str+file_sav_name+'.png', layout1, SaveAllViews=1, ImageResolution=[np.int(res[0]*rat), np.int(res[-1]*rat)], FrameRate=2, FrameWindow=[0, vtuCounter-2])
+#    SaveAnimation(sav_loc+'/jet_B'+B_str+'_V'+V_str+file_sav_name+'.png', layout1, SaveAllViews=1, ImageResolution=[np.int(res[0]*rat), np.int(res[-1]*rat)], FrameRate=2, FrameWindow=[0, vtuCounter-2])
     
     print('Finished')
-    
-    #for i in range(nb_panels):
-    del render_view
-    
-    RemoveLayout(layout1)
-    
-    CreateLayout('Layout #1')
-    
-    # find source
-    annotateTimeFilter1 = FindSource('AnnotateTimeFilter1')
-    
-    # destroy annotateTimeFilter1
-    Delete(annotateTimeFilter1)
-    del annotateTimeFilter1
-    
-    # find source
-    clip1 = FindSource('Clip1')
-    
-    # destroy clip1
-    Delete(clip1)
-    del clip1
-    
-    # get active source.
-    text1 = GetActiveSource()
-    
-    # destroy text1
-    Delete(text1)
-    del text1
-    
-    # find source
-    xMLUnstructuredGridReader1 = FindSource('XMLUnstructuredGridReader1')
-    
-    # destroy xMLUnstructuredGridReader1
-    Delete(xMLUnstructuredGridReader1)
-    del xMLUnstructuredGridReader1
-    
-    # get animation scene
-    animationScene1 = GetAnimationScene()
-
-# update animation scene based on data timesteps
-## not using
-## Properties modified on v2LUTColorBar
-#rendLUTColorBar[-1].UseCustomLabels = 1
-#label_values = np.floor(np.linspace(-v_range,v_range, 13))
-#
-## This to round the number nicely for vis
-#OFFSET = 4
-#for j in range(len(label_values)):
-#    digit_count = -len(str(label_values[j]))
-#    print(digit_count, label_values[j])
-#    label_values[j] = round(label_values[j], digit_count+OFFSET)
+## Delteted current scene    
+#    #for i in range(nb_panels):
+#    del render_view
 #    
-#rendLUTColorBar[-1].CustomLabels = label_values
-
-
-#rendPWF[-1].RescaleTransferFunction(-v_range,v_range)
-#
-### Note: resize frame
-##layout1.SetSplitFraction(0, 0.33333)
-
+#    RemoveLayout(layout1)
+#    
+#    CreateLayout('Layout #1')
+#    
+#    # find source
+#    annotateTimeFilter1 = FindSource('AnnotateTimeFilter1')
+#    
+#    # destroy annotateTimeFilter1
+#    Delete(annotateTimeFilter1)
+#    del annotateTimeFilter1
+#    
+#    # find source
+#    clip1 = FindSource('Clip1')
+#    
+#    # destroy clip1
+#    Delete(clip1)
+#    del clip1
+#    
+#    # get active source.
+#    text1 = GetActiveSource()
+#    
+#    # destroy text1
+#    Delete(text1)
+#    del text1
+#    
+#    # find source
+#    xMLUnstructuredGridReader1 = FindSource('XMLUnstructuredGridReader1')
+#    
+#    # destroy xMLUnstructuredGridReader1
+#    Delete(xMLUnstructuredGridReader1)
+#    del xMLUnstructuredGridReader1
+#    
+#    # get animation scene
+#    animationScene1 = GetAnimationScene()
 
 mini_path = '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet'
 sav_loc = mini_path+'/vids'
 
 ## Input of changing vaibles.
-B = ['30', '40', '50', '60', '70', '80']
-V = ['30', '40', '50', '60']
+B = ['30']
+V = ['30']
 fps = 7
 
 for ii in range(len(B)):
