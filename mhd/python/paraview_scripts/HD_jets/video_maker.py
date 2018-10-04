@@ -4,7 +4,6 @@
 from paraview.simple import *
 import numpy as np
 import glob
-import img2vid as i2v
 import os
 #### disable automatic camera reset on 'Show'
 paraview.simple._DisableFirstRenderCameraReset()
@@ -15,12 +14,12 @@ col_black = [0.0, 0.0, 0.0]
 col_white = [1.0, 1.0, 1.0]
 
 def render_view_func():
+    materialLibrary1 = GetMaterialLibrary()
     renderView = CreateView('RenderView')
-    renderView.ViewSize = [630, 1025] # careful: set to a particular value (fixes 3rd panel)
+    renderView.ViewSize = [1356, 713] # careful: set to a particular value (fixes 3rd panel)
     renderView.AxesGrid = 'GridAxes3DActor'
     renderView.StereoType = 0
     renderView.Background = [0.32, 0.34, 0.43]
-    materialLibrary1 = GetMaterialLibrary()
     renderView.OSPRayMaterialLibrary = materialLibrary1
     
     # init the 'GridAxes3DActor' selected for 'AxesGrid'
@@ -137,34 +136,77 @@ def clip_display(clip,renderView):
     clipDisplay.PolarAxes.SecondaryRadialAxesTextFontFile = ''
     return clipDisplay
 
-def movie_maker(mini_path, B, V, mini_sav_loc):
-    # mini_Path path up till var changes
-    # magnetic feild strength
-    # Velocity
-    # mini_sav_loc - path up till var changes
-    B_str = str(np.int(B))
-    V_str = str(np.int(V))
-    file_sav_name = '/jet_B'+B_str+'_V'+V_str+'_'
-    render_view = []
+def data_display(data, render_view):
+    # set active source
+    SetActiveSource(data)
+    
+    # show data in view
+    data = Show(data, render_view)
+    
+    # trace defaults for the display properties.
+    data.Representation = 'Surface'
+    data.ColorArrayName = [None, '']
+    data.OSPRayScaleArray = 'Te'
+    data.OSPRayScaleFunction = 'PiecewiseFunction'
+    data.SelectOrientationVectors = 'None'
+    data.ScaleFactor = 0.35000000000000003
+    data.SelectScaleArray = 'None'
+    data.GlyphType = 'Arrow'
+    data.GlyphTableIndexArray = 'None'
+    data.GaussianRadius = 0.0175
+    data.SetScaleArray = ['POINTS', 'Te']
+    data.ScaleTransferFunction = 'PiecewiseFunction'
+    data.OpacityArray = ['POINTS', 'Te']
+    data.OpacityTransferFunction = 'PiecewiseFunction'
+    data.DataAxesGrid = 'GridAxesRepresentation'
+    data.SelectionCellLabelFontFile = ''
+    data.SelectionPointLabelFontFile = ''
+    data.PolarAxes = 'PolarAxesRepresentation'
+    data.ScalarOpacityUnitDistance = 0.06443385322347264
+    # init the 'PiecewiseFunction' selected for 'ScaleTransferFunction'
+    data.ScaleTransferFunction.Points = [0.34215784072875977, 0.0, 0.5, 0.0, 2.905837297439575, 1.0, 0.5, 0.0]    
+    # init the 'PiecewiseFunction' selected for 'OpacityTransferFunction'
+    data.OpacityTransferFunction.Points = [0.34215784072875977, 0.0, 0.5, 0.0, 2.905837297439575, 1.0, 0.5, 0.0]
+    # init the 'GridAxesRepresentation' selected for 'DataAxesGrid'
+    data.DataAxesGrid.XTitleFontFile = ''
+    data.DataAxesGrid.YTitleFontFile = ''
+    data.DataAxesGrid.ZTitleFontFile = ''
+    data.DataAxesGrid.XLabelFontFile = ''
+    data.DataAxesGrid.YLabelFontFile = ''
+    data.DataAxesGrid.ZLabelFontFile = ''
+    # init the 'PolarAxesRepresentation' selected for 'PolarAxes'
+    data.PolarAxes.PolarAxisTitleFontFile = ''
+    data.PolarAxes.PolarAxisLabelFontFile = ''
+    data.PolarAxes.LastRadialAxisTextFontFile = ''
+    data.PolarAxes.SecondaryRadialAxesTextFontFile = ''
+    return data
 
-    render_view.append(render_view_func())
-    # loads data
-    # create a new 'XML Unstructured Grid Reader'
-    myPath = mini_path+'/jet_B'+B_str+'_V'+V_str
-    vtuCounter = len(glob.glob1(myPath,'*.vtu'))
+master_dir = '/run/user/1000/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/v_jet/hd/2D'
+
+## Input of changing vaibles.
+#jet_angle = ['0.0','0.1','0.5','1.0','5.0','10.0','15.0','20.0','25.0','30.0']
+jet_angle = ['0.1','0.5','1.0','5.0','10.0','15.0','20.0','25.0','30.0']
+fps = 7
+res = [1892, 1024]
+rat = 1
+
+
+for ii in range(len(jet_angle)):
+    #creates folder to put movies in
+    # save location
+    data_path = master_dir+'/jet_a'+jet_angle[ii]
+    file_sav_name = glob.glob1(data_path,'*.vtu')
     path = []
-    for i in range(vtuCounter):
-        string = myPath+file_sav_name
-        number =  str(i).zfill(4)
-        path.append(string + number + '.vtu')
+    for i in range(len(file_sav_name)):
+        string = data_path+'/'+file_sav_name[i]
+        path.append(string)
     
     data = XMLUnstructuredGridReader(FileName=path)
     
     # data names
     data.CellArrayStatus = ['Te', 'cs', 'e', 'm1', 'm2', 'p', 'rho', 'schrho', 'v1', 'v2']
     # first set of vids
-    # 2nd set of names for vids
-    data_names = [data.CellArrayStatus[0],data.CellArrayStatus[1],data.CellArrayStatus[3]]    
+    data_names = data.CellArrayStatus[5]    
     # get animation scene
     # Dont know what this does, something similar to below
     animationScene1 = GetAnimationScene()
@@ -173,182 +215,110 @@ def movie_maker(mini_path, B, V, mini_sav_loc):
     # update animation scene based on data timesteps
     # This dispays the nb of timesteps
     animationScene1.UpdateAnimationUsingDataTimeSteps()
-    
-    #--------------------------------
-    # create a new 'Clip'
-    # !You will want to add file name for input!
-    name = 'jet_B'+B_str+'_V'+V_str+'_0'
-    clip1 = Clip(Input=data)
-    clip1.ClipType = 'Plane'
-    clip1.Scalars = ['CELLS', 'Alfv']
-    
-    # Clipping sdetting that we weant to change
-    clip1.ClipType.Origin = [0.0, 2000000000.0, 0.0]
-    clip1.ClipType.Normal = [0.0, 1.0, 0.0]
-    
-    # Hides the plane outlines
-    Hide3DWidgets(proxy=clip1.ClipType)
-    # update the view to ensure updated data information
-    render_view[0].Update()
-    
-    # makes sure three panels are the same size
-    size1 = 1.0/3.0
-    size2 = 0.5
-    
+
     # get the material library
     materialLibrary1 = GetMaterialLibrary()
+
+    render_view = render_view_func()
     
     # get layout
     layout1 = GetLayout()
-    
+
     # place view in the layout
-    layout1.AssignView(0, render_view[0])
+    layout1.AssignView(0, render_view)
+    data_display(data, render_view)
+    # reset view to fit data
+    render_view.ResetCamera()
+    #changing interaction mode based on data extents
+    render_view.InteractionMode = '2D'    
+    render_view.CameraPosition = [1.25, 0.75, 7.35627193011166]
+    render_view.CameraFocalPoint = [1.25, 0.75, 0.0]
+    render_view.CameraParallelScale = 1.3004188760781206
+
+    # update the view to ensure updated data information
+    render_view.Update()    #
     
-    # split cell
-    layout1.SplitHorizontal(0, size1)
-    layout1.SplitHorizontal(2, size2)
+   # get active source.
+    xMLUnstructuredGridReader1 = GetActiveSource()
     
-    nb_panels = 3
-    for i in range(1,nb_panels):
-        SetActiveView(None)
-        render_view.append(render_view_func())
-        layout1.AssignView(4+i, render_view[i])
+    # get active view
+    renderView1 = GetActiveViewOrCreate('RenderView')
+    # uncomment following to set a specific view size
+    # renderView1.ViewSize = [1356, 713]
     
-    # find source
-    clip1 = FindSource('Clip1')
+    # get display properties
+    xMLUnstructuredGridReader1Display = GetDisplayProperties(xMLUnstructuredGridReader1, view=render_view)
+    
+    # set scalar coloring
+    ColorBy(xMLUnstructuredGridReader1Display, ('POINTS', 'rho'))  
+
+    # rescale color and/or opacity maps used to include current data range
+    xMLUnstructuredGridReader1Display.RescaleTransferFunctionToDataRange(True, False)
+    
+    # show color bar/color legend
+    xMLUnstructuredGridReader1Display.SetScalarBarVisibility(render_view, True)
+    
+    # get color transfer function/color map for 'rho'
+    rhoLUT = GetColorTransferFunction('rho')
+    
+    # get color legend/bar for rhoLUT in view renderView1
+    rhoLUTColorBar = GetScalarBar(rhoLUT, render_view)
+    
+    # change scalar bar placement
+    rhoLUTColorBar.Orientation = 'Horizontal'
+    rhoLUTColorBar.WindowLocation = 'AnyLocation'    
+    # change scalar bar placement
+    rhoLUTColorBar.Position = [0.3141740412979352, 0.06030855539971949]    
+    # change scalar bar placement
+    rhoLUTColorBar.ScalarBarLength = 0.46938053097345117    
+    # change scalar bar placement
+    rhoLUTColorBar.Position = [0.3053244837758113, 0.061711079943899017]
+    # Apply a preset using its name. Note this may not work as expected when presets have duplicate names.
+    rhoLUT.ApplyPreset('Linear Blue (8_31f)', True)
+    # Properties modified on rhoLUTColorBar
+    rhoLUTColorBar.LabelFontSize = 16    
+    rhoLUTColorBar.TitleFontSize = 20
+
+    # create a new 'Text'
+    text1 = Text()
+    text1.Text = file_sav_name[ii]
+    # show data in view
+    text1Display = Show(text1, render_view)
+    # trace defaults for the display properties.
+    text1Display.FontFile = ''
+ 
+    
+    sav_loc = master_dir+'/vids/jet_'+jet_angle[ii]
+    if os.path.isdir(sav_loc) is False:
+        os.makedirs(sav_loc)
+
+    # save animation
+    SaveAnimation(sav_loc+'\jet_a'+jet_angle[ii]+'.png', layout1, SaveAllViews=1, ImageResolution=[np.int(res[0]*rat), np.int(res[-1]*rat)], FrameRate=1, FrameWindow=[0, len(file_sav_name)])
+
+    # destroy text1
+    Delete(text1)
+    del text1
+    
     # set active source
-    SetActiveSource(clip1)
-    # SETING COLOR BAR PROPERTIES
-    colbar_pos_x = 0.85
-    colbar_pos_y = 0.12
-    scalar_bar_length = 0.75
-    scalar_bar_thickness = 15
+    SetActiveSource(xMLUnstructuredGridReader1)
     
-    clip_1display = []
-    rendLUT = []
-    rendLUTColorBar = []
-    rendPWF = []
-    # goes to last time step
-    for i in range(nb_panels):
-        SetActiveView(render_view[i])
-        clip_1display.append(clip_display(clip1,render_view[i]))    
-    #    render_view[i].ResetCamera()
-        # set scalar coloring
-        ColorBy(clip_1display[i], ('CELLS', data_names[i]))
-        # show color bar/color legend
-        clip_1display[i].SetScalarBarVisibility(render_view[i], True)
-        rendLUT.append(GetColorTransferFunction(data_names[i]))
-        # Makes parameter log scale
-        if data_names[i] == 'rho':
-            rendLUT[i].MapControlPointsToLogSpace()
-            rendLUT[i].UseLogScale = 1
-        rendPWF.append(GetOpacityTransferFunction(data_names[i]))
-        # where the color is change for vars
-        rendLUT[i].ApplyPreset(colour_wheel[i], True) 
-        rendLUTColorBar.append(GetScalarBar(rendLUT[i], render_view[i]))
-        # colour bar text col, pos and font size
-        rendLUTColorBar[i].TitleColor = col_black
-        rendLUTColorBar[i].LabelColor = col_black
-        rendLUTColorBar[i].ScalarBarLength = scalar_bar_length
-        rendLUTColorBar[i].ScalarBarThickness = scalar_bar_thickness
-        rendLUTColorBar[i].Position = [colbar_pos_x, colbar_pos_y]
-        rendLUTColorBar[i].TitleFontSize = 14
-        rendLUTColorBar[i].LabelFontSize = 13
-        rendLUTColorBar[i].HorizontalTitle = 1
-        rendLUTColorBar[i].TitleJustification = 'Left'
-        if data_names[i] == 'v2': # or 'v1' or 'b1' or 'b2':
-            small_data = data.CellData.GetArray('v2').GetRange()
-            v_range = np.max(abs(np.asarray(small_data)))
-            rendLUT[i].RescaleTransferFunction(-v_range, v_range)
+    # destroy xMLUnstructuredGridReader1
+    Delete(xMLUnstructuredGridReader1)
+    del xMLUnstructuredGridReader1
     
     # get animation scene
     animationScene1 = GetAnimationScene()
     
-    animationScene1.GoToFirst()
+    # update animation scene based on data timesteps
+    animationScene1.UpdateAnimationUsingDataTimeSteps()
     
-    # create a new 'Annotate Time Filter'
-    annotateTimeFilter1 = AnnotateTimeFilter(Input=clip1)
-    annotateTimeFilter1.Format = 'Time: %g'
-    annotateTimeFilter1.Scale = 2.14683
+    # destroy renderView1
+    Delete(renderView1)
+    del renderView1
     
-    # show data in view
-    annotateTimeFilter1Display = Show(annotateTimeFilter1, render_view[-1])
-    # trace defaults for the display properties.
-    annotateTimeFilter1Display.FontFile = ''
-    # Properties modified on annotateTimeFilter1Display
-    annotateTimeFilter1Display.WindowLocation = 'LowerRightCorner'
+    # get layout
+    layout1 = GetLayoutByName("Layout #1")
     
-    # create a new 'Text'
-    text1 = Text()
-    # Properties modified on text1
-    text1.Text = 'V = '+V_str+' km s-1, B = ' +B_str+' G'
-    text1Display = Show(text1, render_view[0])
-    text1Display.FontFile = ''
+    RemoveLayout(layout1)
     
-    res = [1892, 1024]
-    rat = 1
-    
-    if os.path.isdir(sav_loc+'/jet_B'+B_str+'_V'+V_str) is False:
-        os.makedirs(sav_loc+'/jet_B'+B_str+'_V'+V_str)
-    # save animation
-#    SaveAnimation(sav_loc+'/jet_B'+B_str+'_V'+V_str+file_sav_name+'.png', layout1, SaveAllViews=1, ImageResolution=[np.int(res[0]*rat), np.int(res[-1]*rat)], FrameRate=2, FrameWindow=[0, vtuCounter-2])
-    
-    print('Finished')
-## Delteted current scene    
-#    #for i in range(nb_panels):
-#    del render_view
-#    
-#    RemoveLayout(layout1)
-#    
-#    CreateLayout('Layout #1')
-#    
-#    # find source
-#    annotateTimeFilter1 = FindSource('AnnotateTimeFilter1')
-#    
-#    # destroy annotateTimeFilter1
-#    Delete(annotateTimeFilter1)
-#    del annotateTimeFilter1
-#    
-#    # find source
-#    clip1 = FindSource('Clip1')
-#    
-#    # destroy clip1
-#    Delete(clip1)
-#    del clip1
-#    
-#    # get active source.
-#    text1 = GetActiveSource()
-#    
-#    # destroy text1
-#    Delete(text1)
-#    del text1
-#    
-#    # find source
-#    xMLUnstructuredGridReader1 = FindSource('XMLUnstructuredGridReader1')
-#    
-#    # destroy xMLUnstructuredGridReader1
-#    Delete(xMLUnstructuredGridReader1)
-#    del xMLUnstructuredGridReader1
-#    
-#    # get animation scene
-#    animationScene1 = GetAnimationScene()
-
-mini_path = '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet'
-sav_loc = mini_path+'/vids'
-
-## Input of changing vaibles.
-B = ['30']
-V = ['30']
-fps = 7
-
-for ii in range(len(B)):
-    for jj in range(len(V)):
-        movie_maker(mini_path=mini_path, B=B[ii], V=V[jj], mini_sav_loc=sav_loc)
-        # not sure if that . should be int he name
-#        file_sav_name = 'jet_B'+str(B[ii])+'_V'+str(V[jj])+'_'
-#        i2v.image2video(filepath=sav_loc+'/jet_B'+str(B[ii])+'_V'+str(V[jj])+'.', prefix=file_sav_name, in_extension='png', 
-#                        output_name=prefix+'_video', out_extension='avi', 
-#                        fps=fps, n_loops=1, delete_images=True, 
-#                        delete_old_videos=True, res=1080, overlay=False, cover_page=False)
-#        
-
+    CreateLayout('Layout #1')
