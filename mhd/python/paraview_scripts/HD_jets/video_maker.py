@@ -181,11 +181,11 @@ def data_display(data, render_view):
     data.PolarAxes.SecondaryRadialAxesTextFontFile = ''
     return data
 
-master_dir = '/run/user/1000/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/v_jet/hd/2D'
+master_dir = '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/v_jet/hd/2D'
 
 ## Input of changing vaibles.
 #jet_angle = ['0.0','0.1','0.5','1.0','5.0','10.0','15.0','20.0','25.0','30.0']
-jet_angle = ['0.1','0.5','1.0','5.0','10.0','15.0','20.0','25.0','30.0']
+jet_angle = ['25.0','30.0']
 fps = 7
 res = [1892, 1024]
 rat = 1
