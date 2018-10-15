@@ -9,7 +9,8 @@ import os
 #### disable automatic camera reset on 'Show'
 paraview.simple._DisableFirstRenderCameraReset()
 
-colour_wheel = ['Black-Body Radiation', 'Cool to Warm', 'Cool to Warm (Extended)']
+# colour_wheel = ['Black-Body Radiation', 'Cool to Warm', 'Cool to Warm (Extended)']
+colour_wheel = ['Black, Orange and White', 'GREEN-WHITE_LINEAR', 'Grayscale']
 col_black = [0.0, 0.0, 0.0]
 col_white = [1.0, 1.0, 1.0]
 
@@ -19,7 +20,7 @@ def render_view_func():
     renderView.AxesGrid = 'GridAxes3DActor'
     renderView.StereoType = 0
     renderView.Background = [0.32, 0.34, 0.43]
-#    materialLibrary1 = GetMaterialLibrary()
+    materialLibrary1 = GetMaterialLibrary()
     renderView.OSPRayMaterialLibrary = materialLibrary1
     
     # init the 'GridAxes3DActor' selected for 'AxesGrid'
@@ -161,9 +162,10 @@ def movie_maker(mini_path, B, V, mini_sav_loc):
     
     # data names
     data.CellArrayStatus = ['rho', 'v1', 'v2', 'v3', 'p', 'b1', 'b2', 'b3', 'trp1', 'Te', 'Alfv', 'divB', 'beta', 'schrho', 'cs']
-    
-    data_names = [data.CellArrayStatus[0],data.CellArrayStatus[9],data.CellArrayStatus[2]] 
-    
+    # first set of vids
+#    data_names = [data.CellArrayStatus[0],data.CellArrayStatus[9],data.CellArrayStatus[2]] 
+    # 2nd set of names for vids
+    data_names = [data.CellArrayStatus[4],data.CellArrayStatus[8],data.CellArrayStatus[13]]    
     # get animation scene
     # Dont know what this does, something similar to below
     animationScene1 = GetAnimationScene()
