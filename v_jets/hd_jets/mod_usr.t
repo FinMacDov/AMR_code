@@ -2,7 +2,7 @@ module mod_usr
   use mod_hd
   implicit none
   double precision :: rhoj, eta, vj, x0, delta_x, driv_trw, PoI, smoothness, j_h 
-  double precision :: jet_speed, plasma_beta, jet_time, alpha_val, tilt, jet_width
+  double precision :: jet_speed, plasma_beta, jet_time, tilt, tilt_deg, jet_width
   logical :: driv_gaussian, driv_tanh, orig_setup
 
 
@@ -28,7 +28,7 @@ contains
   character(len=*), intent(in) :: files(:)
   integer                      :: n
 
-  namelist /my_parameters/ jet_speed,plasma_beta,jet_time,alpha_val,jet_width, driv_gaussian, driv_tanh, orig_setup
+  namelist /my_parameters/ jet_speed,plasma_beta,jet_time,jet_width,tilt_deg,driv_gaussian, driv_tanh, orig_setup
   do n = 1, size(files)
     open(unitpar, file=trim(files(n)), status="old")
     read(unitpar, my_parameters, end=113)
@@ -44,11 +44,11 @@ contains
     vj=jet_speed ! jet Mach speed
     delta_x = jet_width*2
     x0 = 0.0d0 ! centre pt of guassian
-    driv_trw = jet_width ! transitio width fro driver
+    driv_trw = jet_width ! transitio width for driver
     PoI = 0.5d0*(-jet_width+(jet_width-driv_trw)) ! pnt of inflection
     smoothness = 0.1d0*driv_trw ! smoothness of tanh driver
     j_h = 0.0d0 ! jet height 
-    tilt = 0.25d0*dpi
+    tilt = (dpi/180.0d0)*tilt_deg ! convert deg to radians
 
   end subroutine initglobaldata_usr
 
@@ -59,6 +59,7 @@ contains
     integer, intent(in) :: ixG^L, ix^L
     double precision, intent(in) :: x(ixG^S,1:ndim)
     double precision, intent(inout) :: w(ixG^S,1:nw)
+    double precision :: trw, mid_pt, smoothness, rho_bg, rho_base
 
     {^IFONED call mpistop("This is a multi-D HD problem") }
 
@@ -113,10 +114,16 @@ contains
                    +(dcos(tilt)*(vj*0.5d0)*(1.0d0-dtanh((x(ix^S,1)+PoI)/smoothness)))**2.0d0)
       end where
     endif
-!    ! set wall
-!    where(x(ix^S,2)>0.5d0*(xprobmax2-xprobmin2))
-!      w(ix^S,rho_) = (rhoj/eta)*1e-3
-!    end where
+
+    ! set wall
+    trw = 0.2d0 !transition width
+    mid_pt = 0.5d0*(xprobmax2-xprobmin2) ! pos of transtion reg
+    smoothness = trw*0.001d0! how rapid is the change
+    rho_bg = rhoj/eta
+    rho_base = rho_bg*1e-2
+    where(x(ix^S,2)>(0.5d0*(xprobmax2-xprobmin2)-trw))
+      w(ix^S,rho_) = rho_base+(rho_bg-rho_base)*0.5d0*(1.0d0-dtanh((x(ix^S,2)-mid_pt)/smoothness))
+    end where
   end subroutine initonegrid_usr
 
   subroutine specialbound_usr(qt,ixG^L,ixB^L,iB,w,x)
