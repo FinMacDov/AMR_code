@@ -3,7 +3,8 @@ module mod_usr
   implicit none
   double precision :: rhoj, eta, vj, x0, delta_x, driv_trw, PoI, smoothness, j_h 
   double precision :: jet_speed, plasma_beta, jet_time, tilt, tilt_deg, jet_width
-  logical :: driv_gaussian, driv_tanh, orig_setup
+  double precision :: xc, yc
+  logical :: driv_gaussian, driv_tanh, orig_setup, cir
 
 
 contains
@@ -28,7 +29,7 @@ contains
   character(len=*), intent(in) :: files(:)
   integer                      :: n
 
-  namelist /my_parameters/ jet_speed,plasma_beta,jet_time,jet_width,tilt_deg,driv_gaussian, driv_tanh, orig_setup
+  namelist /my_parameters/ jet_speed,plasma_beta,jet_time,jet_width,tilt_deg,driv_gaussian, driv_tanh, orig_setup, cir
   do n = 1, size(files)
     open(unitpar, file=trim(files(n)), status="old")
     read(unitpar, my_parameters, end=113)
@@ -44,12 +45,14 @@ contains
     vj=jet_speed ! jet Mach speed
     delta_x = jet_width*2
     x0 = 0.0d0 ! centre pt of guassian
-    driv_trw = jet_width ! transitio width for driver
+    driv_trw = 0.5d0*jet_width ! transitio width for driver
     PoI = 0.5d0*(-jet_width+(jet_width-driv_trw)) ! pnt of inflection
-    smoothness = 0.1d0*driv_trw ! smoothness of tanh driver
-    j_h = 0.0d0 ! jet height 
+    smoothness = driv_trw*0.5d0 ! smoothness of tanh driver
+    j_h = 1.0d0 ! jet height 
     tilt = (dpi/180.0d0)*tilt_deg ! convert deg to radians
-
+    xc = 0.0d0 
+    yc = 0.0d0 
+    !sigma=0.75d0*rc
   end subroutine initglobaldata_usr
 
   subroutine initonegrid_usr(ixG^L,ix^L,w,x)
@@ -59,7 +62,8 @@ contains
     integer, intent(in) :: ixG^L, ix^L
     double precision, intent(in) :: x(ixG^S,1:ndim)
     double precision, intent(inout) :: w(ixG^S,1:nw)
-    double precision :: trw, mid_pt, smoothness, rho_bg, rho_base
+    double precision :: trw_wall, mid_pt_wall, smoothness_wall, rho_bg, rho_base
+    double precision:: rcloud(ixG^T)
 
     {^IFONED call mpistop("This is a multi-D HD problem") }
 
@@ -115,15 +119,27 @@ contains
       end where
     endif
 
+    if(cir) then
+       w(ix^S,rho_) = rhoj/eta
+       w(ix^S,e_) = one/(hd_gamma-one)
+       w(ix^S,mom(1)) = zero
+       w(ix^S,mom(2)) = zero
+!      rcloud(ix^S)=(x(ix^S,1)-xc)**2+(x(ix^S,2)-yc)**2
+!      w(ix^S,rho_)=rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((dsqrt(rcloud(ix^S))+PoI)/smoothness))
+!      w(ix^S,mom(1))=dsin(tilt)*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((dsqrt(rcloud(ix^S))+PoI)/smoothness)))*(vj*0.5d0)*(1.0d0-dtanh((dsqrt(rcloud(ix^S))+PoI)/smoothness))
+!      w(ix^S,mom(2))=dcos(tilt)*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((dsqrt(rcloud(ix^S))+PoI)/smoothness)))*(vj*0.5d0)*(1.0d0-dtanh((dsqrt(rcloud(ix^S))+PoI)/smoothness))
+!      w(ix^S,e_)=one/(hd_gamma-one)+0.5d0*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((dsqrt(rcloud(ix^S))+PoI)/smoothness)))*((dsin(tilt)*(vj*0.5d0)*(1.0d0-dtanh((dsqrt(rcloud(ix^S))+PoI)/smoothness)))**2.0d0+(dcos(tilt)*(vj*0.5d0)*(1.0d0-dtanh((dsqrt(rcloud(ix^S))+PoI)/smoothness)))**2.0d0)
+     endif
+
     ! set wall
-    trw = 0.2d0 !transition width
-    mid_pt = 0.5d0*(xprobmax2-xprobmin2) ! pos of transtion reg
-    smoothness = trw*0.001d0! how rapid is the change
+    trw_wall = 0.2d0 !transition width
+    mid_pt_wall = 0.5d0*(xprobmax2-xprobmin2) ! pos of transtion reg
+    smoothness_wall = trw_wall*0.001d0! how rapid is the change
     rho_bg = rhoj/eta
     rho_base = rho_bg*1e-2
-    where(x(ix^S,2)>(0.5d0*(xprobmax2-xprobmin2)-trw))
-      w(ix^S,rho_) = rho_base+(rho_bg-rho_base)*0.5d0*(1.0d0-dtanh((x(ix^S,2)-mid_pt)/smoothness))
-    end where
+!    where(x(ix^S,2)>(0.5d0*(xprobmax2-xprobmin2)-trw_wall))
+!      w(ix^S,rho_) = rho_base+(rho_bg-rho_base)*0.5d0*(1.0d0-dtanh((x(ix^S,2)-mid_pt_wall)/smoothness_wall))
+!    end where
   end subroutine initonegrid_usr
 
   subroutine specialbound_usr(qt,ixG^L,ixB^L,iB,w,x)
@@ -134,6 +150,7 @@ contains
     double precision, intent(in) :: qt, x(ixG^S,1:ndim)
     double precision, intent(inout) :: w(ixG^S,1:nw)
     integer :: ixI^L, ix2
+    double precision:: rcloud(ixG^T)
 
     ixImin^DD=ixBmin^DD;
     ixImax^DD=ixBmin^D-1+nghostcells^D%ixImax^DD=ixBmax^DD;
@@ -196,6 +213,14 @@ contains
         w(ixI^S,e_)=one/(hd_gamma-one)+0.5d0*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness)))*((dcos(tilt)*(vj*0.5d0)*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness)))**2.0d0+(dsin(tilt)*(vj*0.5d0)*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness)))**2.0d0)
       end where
     endif
+
+    if(cir) then
+      rcloud(ixI^S)=(x(ixI^S,1)-xc)**2+(x(ixI^S,2)-yc)**2
+      w(ixI^S,rho_)=rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((dsqrt(rcloud(ixI^S))+PoI)/smoothness))
+      w(ixI^S,mom(1))=dsin(tilt)*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((dsqrt(rcloud(ixI^S))+PoI)/smoothness)))*(vj*0.5d0)*(1.0d0-dtanh((dsqrt(rcloud(ixI^S))+PoI)/smoothness))
+      w(ixI^S,mom(2))=dcos(tilt)*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((dsqrt(rcloud(ixI^S))+PoI)/smoothness)))*(vj*0.5d0)*(1.0d0-dtanh((dsqrt(rcloud(ixI^S))+PoI)/smoothness))
+      w(ixI^S,e_)=one/(hd_gamma-one)+0.5d0*(rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((dsqrt(rcloud(ixI^S))+PoI)/smoothness)))*((dcos(tilt)*(vj*0.5d0)*(1.0d0-dtanh((dsqrt(rcloud(ixI^S))+PoI)/smoothness)))**2.0d0+(dsin(tilt)*(vj*0.5d0)*(1.0d0-dtanh((dsqrt(rcloud(ixI^S))+PoI)/smoothness)))**2.0d0)
+     endif
 
   end subroutine specialbound_usr
 
