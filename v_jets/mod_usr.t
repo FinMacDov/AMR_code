@@ -1,8 +1,11 @@
 module mod_usr
   use mod_mhd
   implicit none
-  double precision :: rhoj, eta, vj, BB2
-  double precision :: amp, plasma_beta, jet_time, alpha_val, tilt_pc
+  double precision :: amp, tilt_pc
+  double precision :: rhoj, eta, vj, x0, delta_x, driv_trw, PoI, smoothness, j_h, BB2
+  double precision :: jet_speed, jet_time, tilt, tilt_deg, jet_width, plasma_beta
+  double precision :: xc, yc
+  logical :: driv_gaussian, driv_tanh, orig_setup, cir
 contains
 
   subroutine usr_init()
@@ -29,7 +32,7 @@ contains
   character(len=*), intent(in) :: files(:)
   integer                      :: n
 
-  namelist /my_parameters/ amp,plasma_beta,jet_time,alpha_val,tilt_pc  
+  namelist /my_parameters/ jet_speed,plasma_beta,jet_time,jet_width,tilt_deg,driv_gaussian, driv_tanh, orig_setup, cir
   do n = 1, size(files)
     open(unitpar, file=trim(files(n)), status="old")
     read(unitpar, my_parameters, end=113)
@@ -43,7 +46,16 @@ contains
     mhd_gamma=1.4d0
     rhoj=mhd_gamma
     eta=3.d0
-    vj=10.0d0
+    vj=jet_speed ! jet Mach speed
+    delta_x = jet_width*2
+    x0 = 0.0d0 ! centre pt of guassian
+    driv_trw = jet_width ! transition width for driver
+    PoI = 0.5d0*(-jet_width+(-jet_width+driv_trw)) ! pnt of inflection
+    smoothness = 0.1d0*driv_trw ! smoothness of tanh driver
+    j_h = jet_width 
+    tilt = (dpi/180.0d0)*tilt_deg ! convert deg to radians
+    xc = 0.0d0 
+    yc = 0.0d0 
   end subroutine initglobaldata_usr
 
   subroutine initonegrid_usr(ixG^L,ix^L,w,x)
@@ -55,6 +67,8 @@ contains
     double precision, intent(inout) :: w(ixG^S,1:nw)
     double precision :: magtotal(ix^S,1:ndir), B_sq(ix^S)
     integer :: idir
+    double precision :: trw_wall, mid_pt_wall, smoothness_wall, rho_bg, rho_base
+    double precision:: rcloud(ixG^T)
 
     {^IFONED call mpistop("This is a multi-D MHD problem") }
 
@@ -70,19 +84,74 @@ contains
     end do
     ! B^2
     B_sq(ix^S)=sum((magtotal(ix^S,:))**2,dim=ndim+1)
+    if(orig_setup) then
+      where(dabs(x(ix^S,1))<0.05d0.and.x(ix^S,2)<0.00d0)
+         w(ix^S,rho_)=rhoj
+         w(ix^S,mom(1))=0.0d0
+         w(ix^S,mom(2))=rhoj*vj
+         w(ix^S,e_)=one/(mhd_gamma-one)+0.5d0*rhoj*vj**2.0d0+0.5d0*B_sq(ix^S)
+      else where
+         w(ix^S,rho_) = rhoj/eta
+         w(ix^S,e_) = one/(mhd_gamma-one)+0.5d0*B_sq(ix^S)
+         w(ix^S,mom(1)) = 0.0d0
+         w(ix^S,mom(2)) = 0.0d0
+      end where
+    endif
 
-    where(dabs(x(ix^S,1))<0.05d0.and.x(ix^S,2)<0.00d0)
-       w(ix^S,rho_)=rhoj
-       w(ix^S,mom(1))=0.0d0
-       w(ix^S,mom(2))=rhoj*vj
-       w(ix^S,e_)=one/(mhd_gamma-one)+0.5d0*rhoj*vj**2.0d0+0.5d0*B_sq(ix^S)
-    else where
-       w(ix^S,rho_) = rhoj/eta
-       w(ix^S,e_) = one/(mhd_gamma-one)+0.5d0*B_sq(ix^S)
-       w(ix^S,mom(1)) = 0.0d0
-       w(ix^S,mom(2)) = 0.0d0
-    end where
+    if(driv_gaussian) then
+      where(dabs(x(ix^S,1))<jet_width.and.x(ix^S,2)<0.50d0)
+         w(ix^S,rho_)=rhoj
+         w(ix^S,mom(1))=0.0d0
+         w(ix^S,mom(2))=w(ix^S,rho_)*vj*dexp(-((x(ix^S,1)-x0)/delta_x)**2.0d0)
+         w(ix^S,e_)=one/(mhd_gamma-one)+0.5d0*w(ix^S,rho_)*((w(ix^S,mom(1))/w(ix^S,rho_))**2.0d0+(w(ix^S,mom(2))/w(ix^S,rho_))**2.0d0)+0.5d0*B_sq(ix^S)
+      else where
+         w(ix^S,rho_) = rhoj/eta
+         w(ix^S,e_) = one/(mhd_gamma-one)+0.5d0*B_sq(ix^S)
+         w(ix^S,mom(1)) = 0.0d0
+         w(ix^S,mom(2)) = 0.0d0
+      end where
+    endif
 
+    if(driv_tanh) then
+      ! outside of jet
+      w(ix^S,rho_) = rhoj/eta
+      w(ix^S,e_) = one/(mhd_gamma-one)
+      w(ix^S,mom(1)) = 0.0d0
+      w(ix^S,mom(2)) = 0.0d0
+
+      ! LHS of jet
+      where(x(ix^S,1)>-jet_width .and. x(ix^S,1) <= 0.0d0 .and. x(ix^S,2)<j_h)
+        w(ix^S,rho_)=rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0+dtanh((x(ix^S,1)-PoI)/smoothness))
+        w(ix^S,mom(1))=dsin(tilt)*w(ix^S,rho_)*(vj*0.5d0)*(1.0d0+dtanh((x(ix^S,1)-PoI)/smoothness))
+        w(ix^S,mom(2))=dcos(tilt)*w(ix^S,rho_)*(vj*0.5d0)*(1.0d0+dtanh((x(ix^S,1)-PoI)/smoothness))
+        w(ix^S,e_)=one/(mhd_gamma-one)+0.5d0*w(ix^S,rho_)*((w(ix^S,mom(1))/w(ix^S,rho_))**2.0d0 +(w(ix^S,mom(2))/w(ix^S,rho_))**2.0d0)+0.5d0*B_sq(ix^S)
+      end where
+      ! RHS of jet
+      where(x(ix^S,1)<jet_width .and. x(ix^S,1) >= 0.0d0 .and. x(ix^S,2)<j_h)
+        w(ix^S,rho_)=rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((x(ix^S,1)+PoI)/smoothness))
+        w(ix^S,mom(1))=dsin(tilt)*w(ix^S,rho_)*(vj*0.5d0)*(1.0d0-dtanh((x(ix^S,1)+PoI)/smoothness))
+        w(ix^S,mom(2))=dcos(tilt)*w(ix^S,rho_)*(vj*0.5d0)*(1.0d0-dtanh((x(ix^S,1)+PoI)/smoothness))
+        w(ix^S,e_)=one/(mhd_gamma-one)+0.5d0*w(ix^S,rho_)*((w(ix^S,mom(1))/w(ix^S,rho_))**2.0d0+(w(ix^S,mom(2))/w(ix^S,rho_))**2.0d0)+0.5d0*B_sq(ix^S)
+      end where
+    endif
+
+    if(cir) then
+      rcloud(ix^S)=(x(ix^S,1)-xc)**2+(x(ix^S,2)-yc)**2
+      w(ix^S,rho_)=rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((dsqrt(rcloud(ix^S))+PoI)/smoothness))
+      w(ix^S,mom(1))=dsin(tilt)*w(ix^S,rho_)*(vj*0.5d0)*(1.0d0-dtanh((dsqrt(rcloud(ix^S))+PoI)/smoothness))
+      w(ix^S,mom(2))=dcos(tilt)*w(ix^S,rho_)*(vj*0.5d0)*(1.0d0-dtanh((dsqrt(rcloud(ix^S))+PoI)/smoothness))
+      w(ix^S,e_)=one/(mhd_gamma-one)+0.5d0*w(ix^S,rho_)*((w(ix^S,mom(1))/w(ix^S,rho_))**2.0d0+(w(ix^S,mom(2))/w(ix^S,rho_))**2.0d0)+0.5d0*B_sq(ix^S)
+     endif
+
+    ! set wall
+    trw_wall = 0.2d0 !transition width
+    mid_pt_wall = 0.5d0*(xprobmax2-xprobmin2) ! pos of transtion reg
+    smoothness_wall = trw_wall*0.001d0! how rapid is the change
+    rho_bg = rhoj/eta
+    rho_base = rho_bg*1e-2
+!    where(x(ix^S,2)>(0.5d0*(xprobmax2-xprobmin2)-trw_wall))
+!      w(ix^S,rho_) = rho_base+(rho_bg-rho_base)*0.5d0*(1.0d0-dtanh((x(ix^S,2)-mid_pt_wall)/smoothness_wall))
+!    end where
   end subroutine initonegrid_usr
 
   subroutine specialbound_usr(qt,ixG^L,ixB^L,iB,w,x)
@@ -94,6 +163,7 @@ contains
     integer :: ixI^L, ix2
     double precision :: magtotal(ixG^S,1:ndir), B_sq(ixG^S)
     integer :: idir
+    double precision:: rcloud(ixG^T)
 
     w(ixG^S,mag(1))=zero
     w(ixG^S,mag(2))=BB2
@@ -111,26 +181,73 @@ contains
     ixImax^DD=ixBmin^D-1+nghostcells^D%ixImax^DD=ixBmax^DD;
 
     ! Outflow:
-    do ix2=ixImin2,ixImax2
-       w(ixImin1:ixImax1,ix2,rho_) = w(ixImin1:ixImax1,ixImax2+1,rho_) 
-       w(ixImin1:ixImax1,ix2,e_)   = w(ixImin1:ixImax1,ixImax2+1,e_) 
-       w(ixImin1:ixImax1,ix2,mom(1))  = w(ixImin1:ixImax1,ixImax2+1,mom(1))
-       w(ixImin1:ixImax1,ix2,mom(2))  = w(ixImin1:ixImax1,ixImax2+1,mom(2))
-       w(ixImin1:ixImax1,ix2,mag(1))  = w(ixImin1:ixImax1,ixImax2+1,mag(1))
-       w(ixImin1:ixImax1,ix2,mag(2))  = w(ixImin1:ixImax1,ixImax2+1,mag(2))
-    end do
-    where(dabs(x(ixI^S,1))<0.05d0)
-       w(ixI^S,rho_)=rhoj
-       w(ixI^S,mom(1))=zero
-       w(ixI^S,mom(2))=rhoj*vj
-       w(ixI^S,e_)=one/(mhd_gamma-one)+0.5d0*rhoj*vj**2.0d0+0.5*B_sq(ixI^S)
-    else where
-       ! Reflective:
-       !   w(ixI^S,rho_) = w(ixImin1:ixImax1,ixImax2+nghostcells:ixImax2+1:-1,rho_) 
-       !   w(ixI^S,e_) = w(ixImin1:ixImax1,ixImax2+nghostcells:ixImax2+1:-1,e_) 
-       !   w(ixI^S,mom(1)) = w(ixImin1:ixImax1,ixImax2+nghostcells:ixImax2+1:-1,mom(1))
-       !   w(ixI^S,mom(2)) =-w(ixImin1:ixImax1,ixImax2+nghostcells:ixImax2+1:-1,mom(2))
-    end where
+    if(orig_setup) then
+      do ix2=ixImin2,ixImax2
+         w(ixImin1:ixImax1,ix2,rho_) = w(ixImin1:ixImax1,ixImax2+1,rho_) 
+         w(ixImin1:ixImax1,ix2,e_)   = w(ixImin1:ixImax1,ixImax2+1,e_) 
+         w(ixImin1:ixImax1,ix2,mom(1))  = w(ixImin1:ixImax1,ixImax2+1,mom(1))
+         w(ixImin1:ixImax1,ix2,mom(2))  = w(ixImin1:ixImax1,ixImax2+1,mom(2))
+         w(ixImin1:ixImax1,ix2,mag(1))  = w(ixImin1:ixImax1,ixImax2+1,mag(1))
+         w(ixImin1:ixImax1,ix2,mag(2))  = w(ixImin1:ixImax1,ixImax2+1,mag(2))
+      end do
+      where(dabs(x(ixI^S,1))<0.05d0)
+         w(ixI^S,rho_)=rhoj
+         w(ixI^S,mom(1))=zero
+         w(ixI^S,mom(2))=rhoj*vj
+         w(ixI^S,e_)=one/(mhd_gamma-one)+0.5d0*rhoj*vj**2.0d0+0.5*B_sq(ixI^S)
+      else where
+         ! Reflective:
+         !   w(ixI^S,rho_) = w(ixImin1:ixImax1,ixImax2+nghostcells:ixImax2+1:-1,rho_) 
+         !   w(ixI^S,e_) = w(ixImin1:ixImax1,ixImax2+nghostcells:ixImax2+1:-1,e_) 
+         !   w(ixI^S,mom(1)) = w(ixImin1:ixImax1,ixImax2+nghostcells:ixImax2+1:-1,mom(1))
+         !   w(ixI^S,mom(2)) =-w(ixImin1:ixImax1,ixImax2+nghostcells:ixImax2+1:-1,mom(2))
+      end where
+    endif
+
+    if(driv_gaussian) then
+      where(dabs(x(ixI^S,1))<jet_width.and.x(ixI^S,2)<0.50d0)
+         w(ixI^S,rho_)=rhoj
+         w(ixI^S,mom(1))=0.0d0
+         w(ixI^S,mom(2))=w(ixI^S,rho_)*vj*dexp(-((x(ixI^S,1)-x0)/delta_x)**2.0d0)
+         w(ixI^S,e_)=one/(mhd_gamma-one)+0.5d0*w(ixI^S,rho_)*((w(ixI^S,mom(1))/w(ixI^S,rho_))**2.0d0+(w(ixI^S,mom(2))/w(ixI^S,rho_))**2.0d0)+0.5d0*B_sq(ixI^S)
+      else where
+         w(ixI^S,rho_) = rhoj/eta
+         w(ixI^S,e_) = one/(mhd_gamma-one)+0.5d0*B_sq(ixI^S)
+         w(ixI^S,mom(1)) = 0.0d0
+         w(ixI^S,mom(2)) = 0.0d0
+      end where
+    endif
+
+    if(driv_tanh) then
+      ! outside of jet
+      w(ixI^S,rho_) = rhoj/eta
+      w(ixI^S,e_) = one/(mhd_gamma-one)
+      w(ixI^S,mom(1)) = 0.0d0
+      w(ixI^S,mom(2)) = 0.0d0
+
+      ! LHS of jet
+      where(x(ixI^S,1)>-jet_width .and. x(ixI^S,1) <= 0.0d0 .and. x(ixI^S,2)<j_h)
+        w(ixI^S,rho_)=rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0+dtanh((x(ixI^S,1)-PoI)/smoothness))
+        w(ixI^S,mom(1))=dsin(tilt)*w(ixI^S,rho_)*(vj*0.5d0)*(1.0d0+dtanh((x(ixI^S,1)-PoI)/smoothness))
+        w(ixI^S,mom(2))=dcos(tilt)*w(ixI^S,rho_)*(vj*0.5d0)*(1.0d0+dtanh((x(ixI^S,1)-PoI)/smoothness))
+        w(ixI^S,e_)=one/(mhd_gamma-one)+0.5d0*w(ixI^S,rho_)*((w(ixI^S,mom(1))/w(ixI^S,rho_))**2.0d0 +(w(ixI^S,mom(2))/w(ixI^S,rho_))**2.0d0)+0.5d0*B_sq(ixI^S)
+      end where
+      ! RHS of jet
+      where(x(ixI^S,1)<jet_width .and. x(ixI^S,1) >= 0.0d0 .and. x(ixI^S,2)<j_h)
+        w(ixI^S,rho_)=rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness))
+        w(ixI^S,mom(1))=dsin(tilt)*w(ixI^S,rho_)*(vj*0.5d0)*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness))
+        w(ixI^S,mom(2))=dcos(tilt)*w(ixI^S,rho_)*(vj*0.5d0)*(1.0d0-dtanh((x(ixI^S,1)+PoI)/smoothness))
+        w(ixI^S,e_)=one/(mhd_gamma-one)+0.5d0*w(ixI^S,rho_)*((w(ixI^S,mom(1))/w(ixI^S,rho_))**2.0d0+(w(ixI^S,mom(2))/w(ixI^S,rho_))**2.0d0)+0.5d0*B_sq(ixI^S)
+      end where
+    endif
+
+    if(cir) then
+      rcloud(ixI^S)=(x(ixI^S,1)-xc)**2+(x(ixI^S,2)-yc)**2
+      w(ixI^S,rho_)=rhoj/eta+(rhoj-rhoj/eta)*0.5d0*(1.0d0-dtanh((dsqrt(rcloud(ixI^S))+PoI)/smoothness))
+      w(ixI^S,mom(1))=dsin(tilt)*w(ixI^S,rho_)*(vj*0.5d0)*(1.0d0-dtanh((dsqrt(rcloud(ixI^S))+PoI)/smoothness))
+      w(ixI^S,mom(2))=dcos(tilt)*w(ixI^S,rho_)*(vj*0.5d0)*(1.0d0-dtanh((dsqrt(rcloud(ixI^S))+PoI)/smoothness))
+      w(ixI^S,e_)=one/(mhd_gamma-one)+0.5d0*w(ixI^S,rho_)*((w(ixI^S,mom(1))/w(ixI^S,rho_))**2.0d0+(w(ixI^S,mom(2))/w(ixI^S,rho_))**2.0d0)+0.5d0*B_sq(ixI^S)
+     endif
 
   end subroutine specialbound_usr
 
