@@ -6,7 +6,7 @@ module mod_usr
   double precision, allocatable :: pa(:),ra(:),ya(:)
   double precision :: gzone,dya
   double precision, allocatable :: p_profile(:), rho_profile(:)
-  logical :: tanh_profile, c7_profile
+  logical :: tanh_profile, c7_profile, driver_kuz
   !> Name of temperture profile chosen 
   character(len=std_len), private  :: Te_profile
 
@@ -45,7 +45,7 @@ contains
   character(len=*), intent(in) :: files(:)
   integer                      :: n
 
-  namelist /my_switches/ tanh_profile,c7_profile, /atmos_list/ npts,Te_profile
+  namelist /my_switches/ tanh_profile,c7_profile,driver_kuz /atmos_list/ npts,Te_profile
   do n = 1, size(files)
    open(unitpar, file=trim(files(n)), status="old")
        read(unitpar, my_switches, end=111)
@@ -118,9 +118,9 @@ contains
     integer, intent(in) :: ixI^L, ixO^L
     double precision, intent(in) :: x(ixI^S,1:ndim)
     double precision, intent(inout) :: w(ixI^S,1:nw)
-    double precision :: htra, wtra, rpho
+    double precision :: htra, wtra, rpho, A
     logical, save:: first=.true., units=.true.
-    double precision :: res
+    double precision :: res, width, y0, x0
     integer :: ix^D,na,i
     
     if(units)then
@@ -167,6 +167,15 @@ contains
     w(ixO^S,mom(:))=zero
     w(ixO^S,mag(1))=zero
     w(ixO^S,mag(2))=10.0d0/unit_magneticfield
+
+    if(driver_kuz)then
+      width = 0.25!0.1 !Mm
+      A = 2e5/unit_velocity !<=2 km/s
+      x0 = (xprobmax1-abs(xprobmin1))/2.0d0+0.0d0!<=x origin
+      y0 =0.7d0 !<=y origin
+      w(ixI^S,mom(2))= A*dexp(-((x(ixI^S,1)-x0)**2+(x(ixI^S,2)-y0)**2)/&
+      width**2)
+    endif
 
     if(mhd_glm) w(ixO^S,psi_)=0.d0
     call mhd_to_conserved(ixI^L,ixO^L,w,x)
