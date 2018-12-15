@@ -132,6 +132,9 @@ def bash_writter(qsub_names_list):
     for i_list in range(len(qsub_names_list)):
         file_bash.write('qsub '+qsub_names_list[i_list]+' &\n')
     file_bash.close()
+
+master_dir = '/home/smp16fm/work/AMR_code/solar_atmos/solar_atmosphere_2.5D'
+os.chdir(master_dir)
 # NOTE: need to make sure there is a / infront of shared
 sav_loc = 'shared/mhd_jet1/User/smp16fm/sims/jet2'
 # corosponding submitters.
