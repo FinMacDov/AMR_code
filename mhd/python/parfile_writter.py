@@ -26,8 +26,8 @@ savelist = OrderedDict([('itsave(1,1)=', '0'),
             ('nslices=', '1 !<number of slices'),
             ('slicedir(1)=', '1    !<= data is taken perp to dim select'),
             ('slicecoord(1)=', '0.0d0 !<= pt of origin of slice.')])
-stoplist = OrderedDict([('dtmin=', '1.D-7',
-            'time_max=', '50.0d0')])
+stoplist = OrderedDict([('dtmin=', '1.D-7'),
+            ('time_max=', '50.0d0')])
 methodlist = OrderedDict([('time_integrator=', "'twostep'"),
               ('flux_scheme=', '20*'+"'tvdlf'"),
               ('typepred1=', '20*'+"'hancock'"),
