@@ -20,33 +20,42 @@ Created on Wed May  9 13:12:34 2018
 def listdir_fullpath(d):
     return [os.path.join(d, f) for f in os.listdir(d)]
 
+
+# tanh
+timeunit = 68.6985 #s
+
+
 # c7
-timeunit = 155.658*2#2.14683
+#timeunit = 155.658*2#2.14683
 
 F = False
 T = True
 
 linewidth = 4
 
-colour_map = F
+colour_map = T
 line_plot_evo = F
 vs_cs = F
 
 plot_Te_v2 = T
 movie = T
 
-mass_density_sum = F
+mass_density_sum = T
 
-plasma_beta = F
+plasma_beta = T
 
-sound_speed = F
+sound_speed = T
 
 img_save = T
 
-location = '/media/fionnlagh/W7_backup/c7test/longrun'
+#c7
+#location = '/media/fionnlagh/W7_backup/c7test/longrun'
+#tanh
+location = '/run/user/1001/gvfs/smb-share:server=uosfstore.shef.ac.uk,share=shared/mhd_jet1/User/smp16fm/sims/jet/tanh_sb'
+
 save_loc = '/home/fionnlagh/work/AMR_code/mhd/python/image_testing/'
 
-step = 10
+step = 25
 fps = 5
 fontsize = 18
 labelsize = 14
@@ -54,6 +63,7 @@ B_cgs = 50  # G
 Guass_2_telsa = 1e-4
 B_SI = B_cgs*Guass_2_telsa  # tesla
 miu0_si = 1.2566370614e-6  # H m^-1
+
 # cgs
 runit = 2.3416704877999998E-015
 punit = 0.31754922400000002
@@ -216,8 +226,8 @@ if plot_Te_v2:
         ax1.set_ylim(Te_llimit, Te_ulimit)
 
         ax2.plot(yt, v2t[i], linewidth=linewidth)
-#        ax2.set_ylim(-vlimit-vlimit*0.1, vlimit+vlimit*0.1)
-        ax2.set_ylim(-50, 50)
+        ax2.set_ylim(-vlimit-vlimit*0.1, vlimit+vlimit*0.1)
+#        ax2.set_ylim(-50, 50)
         textstr = '%.3f' % round(tick_clip[i]/60**2, 3)+' hrs'
         ax2.text(0.75, 0.1, textstr, transform=ax2.transAxes, 
                  fontsize=fontsize,bbox=props)
