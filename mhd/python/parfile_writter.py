@@ -148,8 +148,8 @@ for bi in range(len(B)):
     template['&my_parameters']['B_strength ='] = B[bi]+'d0'
     for vi in range(len(V)):
         par_name = 'jetB'+str(B[bi])+'V'+str(V[vi])
-        par_path =  '/fresh/B'+str(B[bi])'/V'+str(V[vi])
-        sav_path = /fresh/B'+str(B[bi])'/V'+str(V[vi])
+        par_path = '/fresh/B'+str(B[bi])+'/V'+str(V[vi])
+        sav_path = '/fresh/B'+str(B[bi])+'/V'+str(V[vi])
         template['&my_parameters']['amp ='] = V[vi]+'d0'        
         parfile_creation(master_dir, par_path, par_name, sav_path, sav_loc, template)
         submitter_creation(master_dir, par_path, par_name, nb_cores, email, rmem, run_time)
