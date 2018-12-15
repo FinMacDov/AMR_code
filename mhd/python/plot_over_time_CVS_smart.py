@@ -20,13 +20,15 @@ Created on Wed May  9 13:12:34 2018
 def listdir_fullpath(d):
     return [os.path.join(d, f) for f in os.listdir(d)]
 
+# c7
+timeunit = 155.658*2#2.14683
 
 F = False
 T = True
 
 linewidth = 4
 
-colour_map = F 
+colour_map = F
 line_plot_evo = F
 vs_cs = F
 
@@ -44,8 +46,8 @@ img_save = T
 location = '/media/fionnlagh/W7_backup/c7test/longrun'
 save_loc = '/home/fionnlagh/work/AMR_code/mhd/python/image_testing/'
 
-step = 2
-fps = 4
+step = 10
+fps = 5
 fontsize = 18
 labelsize = 14
 B_cgs = 50  # G
@@ -58,7 +60,7 @@ punit = 0.31754922400000002
 tunit = 1e6
 gamma = 5/3
 vunit = 11645084.295622544
-timeunit = 155.658*2#2.14683
+
 
 # location = '/home/fionnlagh/work/dat/mhd/2d/c7_relax_run_csv'
 #location = '/home/fionnlagh/sim_data/jet_simple/slice1'
@@ -83,7 +85,7 @@ yt = []
 Tet = []
 
 spt = 0
-ept = spt+40 #len(fname)
+ept = len(fname)
 NBpts = 800
 
 tick = np.arange(spt, ept)*timeunit
@@ -126,7 +128,7 @@ mach = np.sqrt(gamma*(np.array(pt)/np.array(rhot)))
 v2t_cs_array = v2t/mach
 
 if colour_map:
-    H, Tunit = np.meshgrid(yt, tick_clip)
+    H, Tunit = np.meshgrid(yt, np.asarray(tick_clip)/60**2)
     # https://matplotlib.org/examples/color/colormaps_reference.html
     fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, figsize=(18, 20),
                                         dpi=80, facecolor='w', edgecolor='k')
@@ -158,9 +160,9 @@ if colour_map:
 
     cf3 = ax3.contourf(Tunit, H, Tet, cmap=cmap3, levels=levels3)
     fig.colorbar(cf3, ax=ax3, label='Te [$\mathrm{K}$]')
-    ax3.set_xlabel('Time [s]', fontsize=14)
+    ax3.set_xlabel('Time [hrs]', fontsize=14)
     if img_save:
-        fig.savefig(save_loc+'colour_map_vy_rho_Te')
+        fig.savefig(save_loc+'colour_map_vy_rho_Te', dpi=180)
     plt.close(fig)
 if line_plot_evo:
     spacer = 0
@@ -214,12 +216,13 @@ if plot_Te_v2:
         ax1.set_ylim(Te_llimit, Te_ulimit)
 
         ax2.plot(yt, v2t[i], linewidth=linewidth)
-        ax2.set_ylim(-vlimit-vlimit*0.1, vlimit+vlimit*0.1)
+#        ax2.set_ylim(-vlimit-vlimit*0.1, vlimit+vlimit*0.1)
+        ax2.set_ylim(-50, 50)
         textstr = '%.3f' % round(tick_clip[i]/60**2, 3)+' hrs'
         ax2.text(0.75, 0.1, textstr, transform=ax2.transAxes, 
                  fontsize=fontsize,bbox=props)
         if img_save:
-            fig.savefig(save_loc+'/evo/'+'Te_vy_evo'+"{0:04}".format(i),  dpi=180)
+            fig.savefig(save_loc+'/evo/'+'Te_vy_evo'+"{0:04}".format(i), dpi=180)
         ax1.clear()
         ax2.clear()
     plt.close(fig)
@@ -245,13 +248,13 @@ if plot_Te_v2:
 
 if mass_density_sum:
     total_mass_den = np.asarray(rhot).sum(axis=1)
-    plt.plot(tick_clip/60**2,total_mass_den, linewidth=linewidth)
+    plt.plot(np.asarray(tick_clip)/60**2,total_mass_den, linewidth=linewidth)
     plt.ylabel('Total mass density [$\mathrm{kg\;m^{-3}}$]',  fontsize=fontsize)
     plt.xlabel('Time [hrs]',  fontsize=fontsize)
     plt.tick_params(labelsize=labelsize)
     plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
     if img_save:
-        plt.savefig(save_loc+'total_mass_density')
+        plt.savefig(save_loc+'total_mass_density', dpi=180)
     plt.close()
 if plasma_beta:
     plt.semilogy(yt, pt[0]/(B_SI**2/2*miu0_si), linewidth=linewidth)
@@ -259,7 +262,7 @@ if plasma_beta:
     plt.xlabel('$y$ [$\mathrm{Mm}$]',  fontsize=fontsize)
     plt.tick_params(labelsize=labelsize)
     if img_save:
-        plt.savefig(save_loc+'plasma_beta')
+        plt.savefig(save_loc+'plasma_beta', dpi=180)
     plt.close()
 if sound_speed:
     plt.semilogy(yt, mach[0], linewidth=linewidth)
@@ -268,5 +271,5 @@ if sound_speed:
     plt.xlabel('$y$ [$\mathrm{Mm}$]',  fontsize=fontsize)
     plt.tick_params(labelsize=labelsize)
     if img_save:
-        plt.savefig(save_loc+'sound_speed')
+        plt.savefig(save_loc+'sound_speed', dpi=180)
     plt.close()
