@@ -34,7 +34,7 @@ methodlist = OrderedDict([('time_integrator=', "'twostep'"),
               ('typelimited=', "'predictor'"),
               ('small_pressure=', '1.0d-8'),
               ('small_density=', '1.0d-14')])
-boundlist = OrderedDict([('nghostcells=', '2',
+boundlist = OrderedDict([('nghostcells=', '2'),
              ('typeboundary_min1 =', "'symm','asymm','symm','asymm','symm','asymm','symm','asymm'"),
              ('typeboundary_max1 =', "'symm','asymm','symm','asymm','symm','asymm','symm','asymm'"),
              ('typeboundary_min2 =', '8*'+"'special'"),
