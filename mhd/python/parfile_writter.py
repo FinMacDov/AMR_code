@@ -57,7 +57,7 @@ meshlist = OrderedDict([('refine_max_level=', '4'),
             ('xprobmin2=', '0.d0'),
             ('xprobmax2=', '90.d0')])
 paramlist = OrderedDict([('typecourant=', "'maxsum'"),
-             'courantpar=', '0.8d0')])
+             ('courantpar=', '0.8d0')])
 mhd_list = OrderedDict([('mhd_thermal_conduction=', '.false.'),
             ('mhd_radiative_cooling=', '.false.'),
             ('mhd_gravity=', '.true.'),
