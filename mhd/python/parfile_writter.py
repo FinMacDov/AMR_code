@@ -136,7 +136,7 @@ def bash_writter(qsub_names_list):
 master_dir = '/home/smp16fm/work/AMR_code/solar_atmos/solar_atmosphere_2.5D'
 os.chdir(master_dir)
 # NOTE: need to make sure there is a / infront of shared
-sav_loc = 'shared/mhd_jet1/User/smp16fm/sims/jet2'
+sav_loc = '/shared/mhd_jet1/User/smp16fm/sims/jet2'
 # corosponding submitters.
 run_time = '40:00:00'
 nb_cores = '24'
