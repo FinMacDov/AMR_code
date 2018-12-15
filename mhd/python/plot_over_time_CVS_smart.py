@@ -5,6 +5,8 @@ from matplotlib import rcParams, cycler
 from scipy.interpolate import interp1d
 from matplotlib.colors import BoundaryNorm
 from matplotlib.ticker import MaxNLocator
+import img2vid as i2v
+import glob
 import numpy as np
 import os
 
@@ -22,21 +24,45 @@ def listdir_fullpath(d):
 F = False
 T = True
 
-colour_map = T
-line_plot = F
-vs_cs = T
+linewidth = 4
 
+colour_map = F 
+line_plot_evo = F
+vs_cs = F
+
+plot_Te_v2 = T
+movie = T
+
+mass_density_sum = F
+
+plasma_beta = F
+
+sound_speed = F
+
+img_save = T
+
+location = '/media/fionnlagh/W7_backup/c7test/longrun'
+save_loc = '/home/fionnlagh/work/AMR_code/mhd/python/image_testing/'
+
+step = 2
+fps = 4
+fontsize = 18
+labelsize = 14
+B_cgs = 50  # G
+Guass_2_telsa = 1e-4
+B_SI = B_cgs*Guass_2_telsa  # tesla
+miu0_si = 1.2566370614e-6  # H m^-1
 # cgs
 runit = 2.3416704877999998E-015
 punit = 0.31754922400000002
 tunit = 1e6
 gamma = 5/3
 vunit = 11645084.295622544
-timeunit = 2.14683
+timeunit = 155.658*2#2.14683
 
 # location = '/home/fionnlagh/work/dat/mhd/2d/c7_relax_run_csv'
 #location = '/home/fionnlagh/sim_data/jet_simple/slice1'
-location = '/media/fionnlagh/W7_backup/c7test/longrun'
+
 
 global file_path
 file_path = os.path.abspath(location)
@@ -50,18 +76,19 @@ for file in total_files:
 
 v2t = []
 yt = []
-tick = []
+tick_clip = []
 pt = []
 rhot = []
 yt = []
 Tet = []
 
 spt = 0
-ept = len(fname)
+ept = spt+40 #len(fname)
 NBpts = 800
 
 tick = np.arange(spt, ept)*timeunit
-for sim_time in range(spt, ept):
+for sim_time in range(spt, ept, step):
+    tick_clip.append(sim_time*timeunit)
     with open(fname[sim_time]) as csvfile:
         reader = csv.DictReader(csvfile)
         y = []
@@ -93,11 +120,13 @@ for sim_time in range(spt, ept):
         Tet.append(Te_interp(yt))
 
 vlimit = np.floor(np.max(np.abs(v2t)))
+Te_ulimit = np.floor(np.max(Tet)+0.5*np.max(Tet))
+Te_llimit = np.floor(np.min(Tet)-0.5*np.min(Tet))
 mach = np.sqrt(gamma*(np.array(pt)/np.array(rhot)))
 v2t_cs_array = v2t/mach
 
-if colour_map == T:
-    H, Tunit = np.meshgrid(yt, tick)
+if colour_map:
+    H, Tunit = np.meshgrid(yt, tick_clip)
     # https://matplotlib.org/examples/color/colormaps_reference.html
     fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, figsize=(18, 20),
                                         dpi=80, facecolor='w', edgecolor='k')
@@ -107,31 +136,33 @@ if colour_map == T:
         cmap1 = plt.get_cmap('seismic')
         norm1 = BoundaryNorm(levels1, ncolors=cmap1.N)
         cf1 = ax1.contourf(Tunit, H, v2t_cs_array, cmap=cmap1, levels=levels1)
-        fig.colorbar(cf1, ax=ax1, label='v2/cs [m s-1]')  # v2 units
+        fig.colorbar(cf1, ax=ax1, label='$\frac{v_y}{c_s}$ [$\mathrm{m\;s^{-1}}$]')  # v2 units
     else:
         levels1 = MaxNLocator(nbins=500).tick_values(-vlimit, vlimit)
         cmap1 = plt.get_cmap('seismic')
         norm1 = BoundaryNorm(levels1, ncolors=cmap1.N)
         cf1 = ax1.contourf(Tunit, H, v2t, cmap=cmap1, levels=levels1)
-        fig.colorbar(cf1, ax=ax1, label='v2 [m s-1]')  # v2 units
+        fig.colorbar(cf1, ax=ax1, label='$v_y$ [$\mathrm{m\;s^{-1}}$]')  # v2 units
 
     cmap2 = plt.get_cmap('hot')
     levels2 = MaxNLocator(nbins=100).tick_values(np.min(rhot), np.max(rhot))
     norm2 = BoundaryNorm(levels2, ncolors=cmap2.N)
 
     cf2 = ax2.contourf(Tunit, H, rhot, cmap=cmap2, levels=levels2)
-    fig.colorbar(cf2, ax=ax2, label='rho [kg m-3]')
-    ax2.set_ylabel('y [Mm]', fontsize=14)
+    fig.colorbar(cf2, ax=ax2, label=r'$\rho$ [$\mathrm{kg\;m^{-3}}$]')
+    ax2.set_ylabel('$y$ [$\mathrm{Mm}$]', fontsize=14)
 
     cmap3 = plt.get_cmap('coolwarm')
     levels3 = MaxNLocator(nbins=100).tick_values(np.min(Tet), np.max(Tet))
     norm3 = BoundaryNorm(levels3, ncolors=cmap3.N)
 
     cf3 = ax3.contourf(Tunit, H, Tet, cmap=cmap3, levels=levels3)
-    fig.colorbar(cf3, ax=ax3, label='Te [K]')
+    fig.colorbar(cf3, ax=ax3, label='Te [$\mathrm{K}$]')
     ax3.set_xlabel('Time [s]', fontsize=14)
-    plt.show()
-elif line_plot == T:
+    if img_save:
+        fig.savefig(save_loc+'colour_map_vy_rho_Te')
+    plt.close(fig)
+if line_plot_evo:
     spacer = 0
     zero_pts = np.zeros(len(v2t))
     # Selects every nth row
@@ -170,6 +201,72 @@ elif line_plot == T:
     plt.xlabel('y [Mm]', fontsize=fontsize)
     plt.ylabel('v2/cs', fontsize=fontsize)
     plt.xlim(0, 10)
+if plot_Te_v2:
+    fig, (ax1, ax2) = plt.subplots(2, 1)
+    # these are matplotlib.patch.Patch properties
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+    for i in range(len(Tet)):
+        ax1.set_ylabel('Te [$\mathrm{K}$]')
+        ax2.set_ylabel('$v_y$ [$\mathrm{m\;s^{-1}}$]')
+        ax1.semilogy(yt, Tet[i], color='r', linewidth=linewidth)
+        ax1.semilogy(yt, Tet[0], color='grey', linewidth=linewidth,
+                     linestyle='dashed')
+        ax1.set_ylim(Te_llimit, Te_ulimit)
 
-else:
-    print('I do nothing')
+        ax2.plot(yt, v2t[i], linewidth=linewidth)
+        ax2.set_ylim(-vlimit-vlimit*0.1, vlimit+vlimit*0.1)
+        textstr = '%.3f' % round(tick_clip[i]/60**2, 3)+' hrs'
+        ax2.text(0.75, 0.1, textstr, transform=ax2.transAxes, 
+                 fontsize=fontsize,bbox=props)
+        if img_save:
+            fig.savefig(save_loc+'/evo/'+'Te_vy_evo'+"{0:04}".format(i),  dpi=180)
+        ax1.clear()
+        ax2.clear()
+    plt.close(fig)
+    if movie:
+        master_dir = save_loc+'evo'
+        name = 'Te_vy_evo'
+        total_files = glob.glob(master_dir+'/'+name+'*.png')
+        
+        hsize = 586
+        wsize = 782
+        sav_path = '/shared/mhd_jet1/User/smp16fm/sims/atmos/c7/vids'
+        
+        total_files = sorted(total_files)
+        
+        prefix = name
+        file_sav_name = name
+        sav_loc = master_dir
+        
+        i2v.image2video(filepath=sav_loc, prefix=file_sav_name, in_extension='png', 
+                        output_name=file_sav_name+'video', out_extension='avi', 
+                        fps=fps, n_loops=1, delete_images=True, 
+                        delete_old_videos=True, res=1080, overlay=False, cover_page=False)
+
+if mass_density_sum:
+    total_mass_den = np.asarray(rhot).sum(axis=1)
+    plt.plot(tick_clip/60**2,total_mass_den, linewidth=linewidth)
+    plt.ylabel('Total mass density [$\mathrm{kg\;m^{-3}}$]',  fontsize=fontsize)
+    plt.xlabel('Time [hrs]',  fontsize=fontsize)
+    plt.tick_params(labelsize=labelsize)
+    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+    if img_save:
+        plt.savefig(save_loc+'total_mass_density')
+    plt.close()
+if plasma_beta:
+    plt.semilogy(yt, pt[0]/(B_SI**2/2*miu0_si), linewidth=linewidth)
+    plt.ylabel(r'$\beta$',  fontsize=fontsize)
+    plt.xlabel('$y$ [$\mathrm{Mm}$]',  fontsize=fontsize)
+    plt.tick_params(labelsize=labelsize)
+    if img_save:
+        plt.savefig(save_loc+'plasma_beta')
+    plt.close()
+if sound_speed:
+    plt.semilogy(yt, mach[0], linewidth=linewidth)
+    plt.ylim(mach[0].min()-0.1*mach[0].min(), mach[0,-1]+0.1*mach[0,-1])
+    plt.ylabel('$c_S$ [$\mathrm{m\;s^{-1}}$]',  fontsize=fontsize)
+    plt.xlabel('$y$ [$\mathrm{Mm}$]',  fontsize=fontsize)
+    plt.tick_params(labelsize=labelsize)
+    if img_save:
+        plt.savefig(save_loc+'sound_speed')
+    plt.close()
