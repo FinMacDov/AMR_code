@@ -33,18 +33,18 @@ T = True
 
 linewidth = 4
 
-colour_map = T
+colour_map = F
 line_plot_evo = F
 vs_cs = F
 
-plot_Te_v2 = T
-movie = T
+plot_Te_v2 = F
+movie = F
 
-mass_density_sum = T
+mass_density_sum = F
 
 plasma_beta = T
 
-sound_speed = T
+sound_speed = F
 
 img_save = T
 
@@ -59,7 +59,7 @@ step = 25
 fps = 5
 fontsize = 18
 labelsize = 14
-B_cgs = 50  # G
+B_cgs = 60  # G
 Guass_2_telsa = 1e-4
 B_SI = B_cgs*Guass_2_telsa  # tesla
 miu0_si = 1.2566370614e-6  # H m^-1
@@ -267,12 +267,12 @@ if mass_density_sum:
         plt.savefig(save_loc+'total_mass_density', dpi=180)
     plt.close()
 if plasma_beta:
-    plt.semilogy(yt, pt[0]/(B_SI**2/2*miu0_si), linewidth=linewidth)
+    plt.semilogy(yt, (pt[0]/0.1)/(B_cgs**2/(2*4*np.pi)), linewidth=linewidth)
     plt.ylabel(r'$\beta$',  fontsize=fontsize)
     plt.xlabel('$y$ [$\mathrm{Mm}$]',  fontsize=fontsize)
     plt.tick_params(labelsize=labelsize)
     if img_save:
-        plt.savefig(save_loc+'plasma_beta', dpi=180)
+        plt.savefig(save_loc+'plasma_beta_test', dpi=180)
     plt.close()
 if sound_speed:
     plt.semilogy(yt, mach[0], linewidth=linewidth)
