@@ -26,8 +26,8 @@ savelist = OrderedDict([('itsave(1,1)=', '0'),
             ('nslices=', '1 !<number of slices'),
             ('slicedir(1)=', '1    !<= data is taken perp to dim select'),
             ('slicecoord(1)=', '0.0d0 !<= pt of origin of slice.')])
-stoplist = OrderedDict([('dtmin=', '1.D-7'),
-            ('time_max=', '50.0d0')])
+stoplist = OrderedDict([('dtmin=', '1.D-24'),
+            ('time_max=', '140.0d0')])
 methodlist = OrderedDict([('time_integrator=', "'twostep'"),
               ('flux_scheme=', '20*'+"'tvdlf'"),
               ('typepred1=', '20*'+"'hancock'"),
@@ -71,7 +71,7 @@ atmos_list = OrderedDict([('Te_profile=', "'C7'"),
               ('npts=', '8000')])
 my_parameters = OrderedDict([('amp =', '50.0d0 !km s-1'),
                  ('B_strength =', '60.0d0 !G'),
-                 ('jet_time =', '240.0d0 !s'),
+                 ('jet_time =', '300.0d0 !s'),
                  ('alpha_val =', '0.0d0'),
                  ('tilt_pc =', '0.0d0')])
 my_switches = OrderedDict([('tanh_profile=', '.T.'),
@@ -151,8 +151,8 @@ for bi in range(len(B)):
     template['&my_parameters']['B_strength ='] = B[bi]+'d0'
     for vi in range(len(V)):
         par_name = 'jetB'+str(B[bi])+'V'+str(V[vi])
-        par_path = '/fresh/B'+str(B[bi])+'/V'+str(V[vi])
-        sav_path = '/fresh/B'+str(B[bi])+'/V'+str(V[vi])
+        par_path = '/P300/B'+str(B[bi])+'/V'+str(V[vi])
+        sav_path = '/P300/B'+str(B[bi])+'/V'+str(V[vi])
         template['&my_parameters']['amp ='] = V[vi]+'d0'        
         parfile_creation(master_dir, par_path, par_name, sav_path, sav_loc, template)
         submitter_creation(master_dir, par_path, par_name, nb_cores, email, rmem, run_time)
