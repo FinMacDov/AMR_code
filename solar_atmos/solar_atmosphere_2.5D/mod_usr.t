@@ -8,11 +8,11 @@ module mod_usr
   double precision, allocatable :: pa(:),ra(:),ya(:),Ha(:)
 
   double precision :: s0,s1,Bv,B_y,y_r
-  logical :: driver, tanh_profile, c7_profile, driver_kuz
+  logical :: driver_Fedun, tanh_profile, c7_profile, driver_kuz,MHD_wave_test
   logical :: driver_random, integrate, derivative, derivative_2 
   logical :: driver_injetion, driver_injetion_1, jet_skewed_guass
-  logical ::  jet_cont, jet_switch_on_off, jet_test
-  double precision :: jet_time,amp,B_strength,alpha_val,tilt_pc
+  logical ::  jet_cont,jet_switch_on_off,jet_test,phys_units,testing
+  double precision :: jet_time,amp,B_strength,alpha_val,tilt_pc,driver_width,driver_height
   double precision :: randphase(10), randA(10), randP(10)
   integer :: nxmodes, npts
   !> Name of temperture profile chosen 
@@ -56,7 +56,7 @@ contains
   character(len=*), intent(in) :: files(:)
   integer                      :: n
 
-  namelist /my_switches/ driver,driver_kuz,driver_random,tanh_profile,c7_profile,integrate,derivative,derivative_2,driver_injetion,driver_injetion_1, jet_cont,jet_switch_on_off,jet_test,jet_skewed_guass, /atmos_list/ npts,Te_profile, /my_parameters/ amp,B_strength,jet_time,alpha_val,tilt_pc  
+  namelist /my_switches/ MHD_wave_test,driver_Fedun,driver_kuz,driver_random,tanh_profile,c7_profile,integrate,derivative,derivative_2,driver_injetion,driver_injetion_1, jet_cont,jet_switch_on_off,jet_test,jet_skewed_guass,phys_units,testing, /atmos_list/ npts,Te_profile, /my_parameters/ amp,B_strength,jet_time,alpha_val,tilt_pc,driver_width,driver_height  
   do n = 1, size(files)
    open(unitpar, file=trim(files(n)), status="old")
        read(unitpar, my_switches, end=111)
@@ -102,16 +102,17 @@ contains
     s1  =  (Bv-B_y)*(y_r-s0)**2!<= see own notes
     !<= s1 fixes the value of |B| = 8G @ (0,y_r)     
     
-    !=> To allow output to be in physical uints
-    length_convert_factor = unit_length
-    time_convert_factor = unit_time
-    w_convert_factor(1) = unit_density
-    w_convert_factor(5) = unit_pressure
+    if(phys_units) then
+     length_convert_factor = unit_length
+     time_convert_factor = unit_time
+     w_convert_factor(1) = unit_density
+     w_convert_factor(5) = unit_pressure
 
-    do iv = 2,4
-      w_convert_factor(iv) = unit_velocity
-      w_convert_factor(iv+4) = unit_magneticfield
-    enddo 
+     do iv = 2,4
+       w_convert_factor(iv) = unit_velocity
+       w_convert_factor(iv+4) = unit_magneticfield
+      enddo 
+    endif
 
     !=> hydrostatic vertical stratification of density, temperature, pressure
     call inithdstatic
@@ -305,13 +306,14 @@ contains
         write(*,*)'p =', unit_pressure, 'dyn cm-2'
         if(tanh_profile) write(*,*)'tanh atmos =', tanh_profile
         if(c7_profile) write(*,*)'C7 atmos =', c7_profile
-        if(driver) write(*,*)'driver Fedun=', driver
+        if(driver_Fedun) write(*,*)'driver Fedun=', driver_Fedun
         if(driver_random) write(*,*)'driver random =', driver_random
         if(driver_kuz) write(*,*)'driver Kuzma=', driver_kuz
         if(jet_test) write(*,*) 'For testing jet', jet_test
         if(jet_cont) write(*,*) 'jet continous', jet_cont
         if(jet_switch_on_off) write(*,*) 'jet switch on/off', jet_switch_on_off
         if(jet_skewed_guass) write(*,*) 'jet driven with skewed guass', jet_skewed_guass
+        if(MHD_wave_test) write(*,*) 'MHD Blast wave test', MHD_wave_test
       endif
       first=.false.
     endif
@@ -323,6 +325,8 @@ contains
        w(ix^D,rho_)=ra(na)+(one-cos(dpi*res/dya))/2.0d0*(ra(na+1)-ra(na))
        w(ix^D,p_)=pa(na)+(one-cos(dpi*res/dya))/2.0d0*(pa(na+1)-pa(na))
      {end do\}
+
+     w(ixO^S,mom(:))=zero
 
    if(derivative_2)then
      do ix1=ixImin1,ixImax1
@@ -375,26 +379,25 @@ contains
     endselect
     endif
  
-    if(firstprocess)then
-       w(ixO^S,e_) = w(ixO^S,e_)+(sum(w(ixO^S,mag(:))**2,dim=ndim+1)/2.0d0)
-       call  mhd_to_primitive(ixI^L,ixO^L,w,x)
-       w(ixO^S,mom(1))=zero
-       w(ixO^S,mom(2))=zero 
-       w(ixO^S,mom(3))=zero
-    endif  
+!    if(firstprocess)then
+!       w(ixO^S,e_) = w(ixO^S,e_)+(sum(w(ixO^S,mag(:))**2,dim=ndim+1)/2.0d0)
+!       call  mhd_to_primitive(ixI^L,ixO^L,w,x)
+!       w(ixO^S,mom(:))=zero
+!    endif  
 
       if(driver_kuz)then
-      width = 0.1 !Mm
-      A = 2e5/unit_velocity !<=2 km/s
+      width = 0.25 !Mm
+!      A = 2e5/unit_velocity !<=2 km/s
+      A = 4e6/unit_velocity !<= 40 km/s
       x0 = (xprobmax1-abs(xprobmin1))/2.0d0+0.0d0!<=x origin
-      y0 =0.7d0 !<=y origin
+      y0 =1.5d0 !<=y origin
       w(ixI^S,mom(2))= A*dexp(-((x(ixI^S,1)-x0)**2+(x(ixI^S,2)-y0)**2)/&
       width**2)
       endif
 
      if(jet_switch_on_off) then
       !to drive jet
-      jet_w = 3.5d7/2.0d0/unit_length !< (350 km)/unit_length
+      jet_w = driver_width/unit_length! 3.5d7/2.0d0/unit_length !< (350 km)/unit_length!orig length
       A = amp*1.0d5/unit_velocity
       deltax = (jet_w)/3.d0 !< This defines the width of guass dist.
                                    !< divided by 3 as guass dist = 0 
@@ -403,7 +406,7 @@ contains
       rho_j = 1.0d-9/unit_density
       do ind1=ixOmin1,ixOmax1
         do ind2=ixOmin2,ixOmax2
-          if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w .and. x(ind^D,2)<0.0d0) then
+!          if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w .and. x(ind^D,2)<0.0d0) then
             w(ind^D,rho_) = w(ind^D,rho_) +(rho_j-w(ind^D,rho_))*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2) 
             if(mhd_n_tracer>0) then
               w(ind^D,tracer(1))=100.0d0
@@ -419,7 +422,7 @@ contains
               endif
             else
               w(ind^D,mom(2))=zero
-            endif
+!            endif
         end do
       end do
       endif
@@ -465,9 +468,8 @@ contains
     integer :: nb_pts
     double precision :: rand_driv(10)
     double precision :: skewed_guass_dist, alpha
-
-
-
+    double precision :: qt0
+    
     select case(iB)
     case(3)
       !! fixed zero velocity
@@ -503,34 +505,14 @@ contains
         endselect
       endif
 
-!    if(firstprocess)then
-      !! fixed gravity stratification of density and pressure pre-determined in initial condition
       do ix2=ixOmin2,ixOmax2
         w(ixOmin1:ixOmax1,ix2,rho_)=rbc(ix2)
         w(ixOmin1:ixOmax1,ix2,p_)=pbc(ix2)
       enddo
-!    endif
-
-!    if(.NOT.firstprocess)then
-!      ixInt_low^L=ixO^L;
-!      ixInt_lowmin2=ixOmax2+1;ixInt_lowmax2=ixOmax2+1;
-!      call mhd_get_pthermal(w,x,ixI^L,ixInt_low^L,pth_low)
-!      ixInt_lowmin2=ixOmin2;ixInt_lowmax2=ixOmax2+1;
-!      call getggrav(ggrid_low,ixI^L,ixInt_low^L,x)
-!      !> fill pth, rho ghost layers according to gravity stratification
-!      invT_low(ixOmax2+1^%2ixO^S)=w(ixOmax2+1^%2ixO^S,rho_)/pth_low(ixOmax2+1^%2ixO^S) 
-!      tmp_low=0.d0
-!      do ix2=ixOmax2,ixOmin2,-1
-!        tmp_low(ixOmax2+1^%2ixO^S)=tmp_low(ixOmax2+1^%2ixO^S)+0.5d0*&
-!            (ggrid_low(ix2^%2ixO^S)+ggrid_low(ix2+1^%2ixO^S))*invT_low(ixOmax2+1^%2ixO^S)
-!        w(ix2^%2ixO^S,p_)=pth_low(ixOmax2+1^%2ixO^S)*dexp(-tmp_low(ixOmax2+1^%2ixO^S)*dxlevel(2))
-!        w(ix2^%2ixO^S,rho_)=w(ix2^%2ixO^S,p_)*invT_low(ixOmax2+1^%2ixO^S)
-!      enddo
-!    endif
 
       !=> List of different drivers
       !=> Fedun et al 
-      if(driver) then 
+      if(driver_Fedun) then 
       jet_w = (xprobmax1-xprobmin1)/domain_nx1 !<= 1 cell radius 
       jet_h = (xprobmax2-xprobmin2)/domain_nx2
       A = 5.0d4/unit_velocity !500 m/s !5.0d6/unit_velocity!
@@ -553,7 +535,7 @@ contains
                                    !< divided by 3 as guass dist = 0 
                                    !< after 3 sigma. 
       j_origx = (abs(xprobmax1)-abs(xprobmin1))/2.0d0
-      rho_j = 1.0d-9/unit_density
+      rho_j = 2.0d0*1.0d-9/unit_density
       phase = 2.0d0*dpi/10.0d0
       do ind1=ixOmin1,ixOmax1
         do ind2=ixOmin2,ixOmax2
@@ -573,18 +555,18 @@ contains
 
      if(jet_cont) then
       !to drive jet
-      jet_w = 3.5d7/2.0d0/unit_length !< (350 km)/unit_length
+      jet_w = 1d8/unit_length !3.5d7/2.0d0/unit_length !< (350 km)/unit_length
       A = amp*1.0d5/unit_velocity
       deltax = (jet_w)/3.d0 !< This defines the width of guass dist.
                                    !< divided by 3 as guass dist = 0 
                                    !< after 3 sigma. 
       j_origx = (abs(xprobmax1)-abs(xprobmin1))/2.0d0
-      rho_j = 1.0d-9/unit_density
+      rho_j = 2.0d0*1.0d-9/unit_density
       phase = 2.0d0*dpi/(jet_time/unit_time)
       do ind1=ixOmin1,ixOmax1
         do ind2=ixOmin2,ixOmax2
           if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w) then
-            w(ind^D,rho_) = rbc(1)+(rho_j-rbc(1))*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2) 
+            w(ind^D,rho_) = rbc(ind2) +(rho_j-rbc(ind2))*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2) 
             if(mhd_n_tracer>0) then
               w(ind^D,tracer(1))=100.0d0
             endif
@@ -604,43 +586,44 @@ contains
         end do
       end do
       endif
-
      !> gassian driver for jet with switch on and off condition
      if(jet_switch_on_off) then
       !to drive jet
-      jet_w = 3.5d7/2.0d0/unit_length !< (350 km)/unit_length
+      qt0= 0.0d0!4.0d0*(60.0d0**2)/unit_time
+      jet_w = driver_width/unit_length! 3.5d7/2.0d0/unit_length !< (350 km)/unit_length!orig length
       A = amp*1.0d5/unit_velocity
       deltax = (jet_w)/3.d0 !< This defines the width of guass dist.
                                    !< divided by 3 as guass dist = 0 
                                    !< after 3 sigma. 
       j_origx = (abs(xprobmax1)-abs(xprobmin1))/2.0d0
-      rho_j = 1.0d-9/unit_density
+      rho_j = 2.0d0*1.0d-9/unit_density
       endtime = jet_time/unit_time
-!      phase = 2.0d0*dpi/10.0d0
       phase = 2.0d0*dpi/endtime
       switch_off = endtime/2
       do ind1=ixOmin1,ixOmax1
         do ind2=ixOmin2,ixOmax2
-          if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w .and. x(ind^D,2)<=jet_h) then
-            w(ind^D,rho_) = w(ind^D,rho_) +(rho_j-w(ind^D,rho_))*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2) 
+          if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w) then
+            w(ind^D,rho_) = rbc(ind2) +(rho_j-rbc(ind2))*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2) 
             if(mhd_n_tracer>0) then
               w(ind^D,tracer(1))=100.0d0
             endif
-            if (qt >= switch_off) then
-              if (qt-endtime > 0.0d0) then
-              w(ind^D,mom(2))= 0.0d0
+            if (qt >= switch_off+qt0) then
+              if (qt-qt0-endtime > 0.0d0) then
+                w(ind^D,mom(2))= 0.0d0
               else  
-              w(ind^D,mom(2))= -A*dtanh(phase*(qt-endtime))*& 
-                               dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)  
+                w(ind^D,mom(2))= -A*dtanh(phase*(qt-qt0-endtime))*& 
+                                 dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)  
               endif
-              else
-                w(ind^D,mom(2))= A*dtanh(phase*qt)*&
+            elseif (qt-qt0<0.0d0) then
+              w(ind^D,mom(2))= 0.0d0
+            else
+              w(ind^D,mom(2))= A*dtanh(phase*(qt-qt0))*&
                                dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
             endif
           endif
         end do
       end do
-      endif      
+     endif
 
      if(jet_skewed_guass) then
       !to drive jet
@@ -883,13 +866,16 @@ contains
      kk0=0.01d0
      kk1=1.0d0
      grhomax=1.d-8
+!      call MPI_Recv(&number, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE)
 
-!     grhomax=MAXVAL(gradrho(ixO^S))
+     !grhomax=MPI_MAX(gradrho(ixO^S)) !MAXVAL(gradrho(ixO^S))
 
   ! putting the schlierplot of density in nwauxio=1
      w(ixO^S,nw+5)=dexp(-kk*(gradrho(ixO^S)-kk0*grhomax)/(kk1*grhomax-kk0*grhomax))
    
      w(ixO^S,nw+6)=unit_velocity*dsqrt(mhd_gamma*pth(ixO^S)/w(ixO^S,rho_))
+
+     w(ixO^S,nw+7)=w(ixO^S,e_)
 
   end subroutine specialvar_output
 
@@ -898,8 +884,8 @@ contains
     use mod_global_parameters
     character(len=*) :: varnames
 
-!    varnames='Te Alfv divB beta schrho j1 j2 j3 cs fb'
-    varnames='Te Alfv divB beta schrho cs'
+!    varnames='Te Alfv divB beta schrho j1 j2 j3 cs fb e'
+    varnames='Te Alfv divB beta schrho cs e'
 
   end subroutine specialvarnames_output
 
