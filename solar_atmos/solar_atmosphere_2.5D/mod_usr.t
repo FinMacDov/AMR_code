@@ -296,13 +296,13 @@ contains
       if(mype==0) then
         write(*,*)'Simulating 2.5D solar atmosphere'
         write(*,*)'dimensionless vars:'
-        write(*,*)'T =', unit_time, 's'
+        write(*,*)'t =', unit_time, 's'
         write(*,*)'L =', unit_length, 'cm'
         write(*,*)'V =', unit_velocity, 'cm s-1'
         write(*,*)'ne =', unit_numberdensity, 'cm-3'
         write(*,*)'rho =', unit_density, 'g cm-3'
         write(*,*)'B =', unit_magneticfield, 'G'
-        write(*,*)'T =', unit_temperature, 'K'
+        write(*,*)'Te =', unit_temperature, 'K'
         write(*,*)'p =', unit_pressure, 'dyn cm-2'
         if(tanh_profile) write(*,*)'tanh atmos =', tanh_profile
         if(c7_profile) write(*,*)'C7 atmos =', c7_profile
@@ -395,37 +395,37 @@ contains
       width**2)
       endif
 
-     if(jet_switch_on_off) then
-      !to drive jet
-      jet_w = driver_width/unit_length! 3.5d7/2.0d0/unit_length !< (350 km)/unit_length!orig length
-      A = amp*1.0d5/unit_velocity
-      deltax = (jet_w)/3.d0 !< This defines the width of guass dist.
-                                   !< divided by 3 as guass dist = 0 
-                                   !< after 3 sigma. 
-      j_origx = (abs(xprobmax1)-abs(xprobmin1))/2.0d0
-      rho_j = 1.0d-9/unit_density
-      do ind1=ixOmin1,ixOmax1
-        do ind2=ixOmin2,ixOmax2
+!     if(jet_switch_on_off) then
+!      !to drive jet
+!      jet_w = driver_width/unit_length! 3.5d7/2.0d0/unit_length !< (350 km)/unit_length!orig length
+!      A = amp*1.0d5/unit_velocity
+!      deltax = (jet_w)/3.d0 !< This defines the width of guass dist.
+!                                   !< divided by 3 as guass dist = 0 
+!                                   !< after 3 sigma. 
+!      j_origx = (abs(xprobmax1)-abs(xprobmin1))/2.0d0
+!      rho_j = 1.0d-9/unit_density
+!      do ind1=ixOmin1,ixOmax1
+!        do ind2=ixOmin2,ixOmax2
 !          if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w .and. x(ind^D,2)<0.0d0) then
-            w(ind^D,rho_) = w(ind^D,rho_) +(rho_j-w(ind^D,rho_))*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2) 
-            if(mhd_n_tracer>0) then
-              w(ind^D,tracer(1))=100.0d0
-            endif
-              if(tilt_pc>0.0d0) then 
-                w(ind^D,mom(1))=(tilt_pc)*A*&
-                               dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
-                w(ind^D,mom(2))= (1.0d0-tilt_pc)*A*&
-                                 dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
-              else
-                w(ind^D,mom(1))=0.0d0
-                w(ind^D,mom(2))= A*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
-              endif
-            else
-              w(ind^D,mom(2))=zero
+!            w(ind^D,rho_) = w(ind^D,rho_) +(rho_j-w(ind^D,rho_))*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2) 
+!            if(mhd_n_tracer>0) then
+!              w(ind^D,tracer(1))=100.0d0
 !            endif
-        end do
-      end do
-      endif
+!              if(tilt_pc>0.0d0) then 
+!                w(ind^D,mom(1))=(tilt_pc)*A*&
+!                               dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
+!                w(ind^D,mom(2))= (1.0d0-tilt_pc)*A*&
+!                                 dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
+!              else
+!                w(ind^D,mom(1))=0.0d0
+!                w(ind^D,mom(2))= A*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
+!              endif
+!            else
+!              w(ind^D,mom(2))=zero
+!            endif
+!        end do
+!      end do
+!      endif
 
    ! Set tracer
     if(mhd_n_tracer>0) then
@@ -452,7 +452,7 @@ contains
     ! special boundary types, user defined
     use mod_global_parameters
     use mod_physics
-    use mod_skewed_Gaussian
+!    use mod_skewed_Gaussian
 
     integer, intent(in) :: ixO^L, iB, ixI^L
     double precision, intent(in) :: qt, x(ixI^S,1:ndim)
@@ -596,33 +596,56 @@ contains
                                    !< divided by 3 as guass dist = 0 
                                    !< after 3 sigma. 
       j_origx = (abs(xprobmax1)-abs(xprobmin1))/2.0d0
-      rho_j = 2.0d0*1.0d-9/unit_density
+!      rho_j = 2.0d0*1.0d-9/unit_density
+      rho_j = 1.0d-9/unit_density
       endtime = jet_time/unit_time
       phase = 2.0d0*dpi/endtime
       switch_off = endtime/2
       do ind1=ixOmin1,ixOmax1
         do ind2=ixOmin2,ixOmax2
           if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w) then
-            w(ind^D,rho_) = rbc(ind2) +(rho_j-rbc(ind2))*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2) 
+            w(ind^D,rho_) = w(ind^D,rho_) +(rho_j-w(ind^D,rho_))*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2) 
             if(mhd_n_tracer>0) then
               w(ind^D,tracer(1))=100.0d0
             endif
-            if (qt >= switch_off+qt0) then
-              if (qt-qt0-endtime > 0.0d0) then
-                w(ind^D,mom(2))= 0.0d0
-              else  
-                w(ind^D,mom(2))= -A*dtanh(phase*(qt-qt0-endtime))*& 
-                                 dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)  
-              endif
-            elseif (qt-qt0<0.0d0) then
+            if (qt >= switch_off) then
+              if (qt-endtime > 0.0d0) then
               w(ind^D,mom(2))= 0.0d0
-            else
-              w(ind^D,mom(2))= A*dtanh(phase*(qt-qt0))*&
+              else  
+              w(ind^D,mom(2))= -A*dtanh(phase*(qt-endtime))*& 
+                               dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)  
+              endif
+              else
+                w(ind^D,mom(2))= A*dtanh(phase*qt)*&
                                dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
             endif
           endif
         end do
       end do
+
+!      do ind1=ixOmin1,ixOmax1
+!        do ind2=ixOmin2,ixOmax2
+!          if( x(ind^D,1)<=jet_w .and. x(ind^D,1)>=-jet_w) then
+!            w(ind^D,rho_) = rbc(ind2) +(rho_j-rbc(ind2))*dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2) 
+!            if(mhd_n_tracer>0) then
+!              w(ind^D,tracer(1))=100.0d0
+!            endif
+!            if (qt >= switch_off+qt0) then
+!              if (qt-qt0-endtime > 0.0d0) then
+!                w(ind^D,mom(2))= 0.0d0
+!              else  
+!                w(ind^D,mom(2))= -A*dtanh(phase*(qt-qt0-endtime))*& 
+!                                 dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)  
+!              endif
+!            elseif (qt-qt0<0.0d0) then
+!              w(ind^D,mom(2))= 0.0d0
+!            else
+!              w(ind^D,mom(2))= A*dtanh(phase*(qt-qt0))*&
+!                               dexp(-((x(ind1,ind2,1)-j_origx)/deltax)**2)
+!            endif
+!          endif
+!        end do
+!      end do
      endif
 
      if(jet_skewed_guass) then
@@ -644,9 +667,9 @@ contains
             if(mhd_n_tracer>0) then
               w(ind^D,tracer(1))=100.0d0
             endif
-              call skewd_Gaussian(skewed_guass_dist,alpha,x0,x(ind1,ind2,1),deltax)  
-              w(ind^D,mom(1))=zero
-               w(ind^D,mom(2))= A*dtanh(phase*qt)*skewed_guass_dist
+!              call skewd_Gaussian(skewed_guass_dist,alpha,x0,x(ind1,ind2,1),deltax)  
+!              w(ind^D,mom(1))=zero
+!               w(ind^D,mom(2))= A*dtanh(phase*qt)*skewed_guass_dist
                                  
             else
               w(ind^D,mom(2))=zero
